@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'is_admin',
     ];
 
     /**
@@ -43,6 +44,58 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
         ];
+    }
+
+    /**
+     * Relación: Un usuario tiene un carrito
+     */
+    public function carrito()
+    {
+        return $this->hasOne(Carrito::class, 'user_id');
+    }
+
+    /**
+     * Relación: Un usuario tiene muchas órdenes
+     */
+    public function ordenes()
+    {
+        return $this->hasMany(Orden::class, 'user_id');
+    }
+
+    /**
+     * Relación: Un usuario tiene muchas direcciones de entrega
+     */
+    public function direcciones()
+    {
+        return $this->hasMany(DireccionEntrega::class, 'user_id');
+    }
+
+    /**
+     * Obtener la dirección principal del usuario
+     */
+    public function direccionPrincipal()
+    {
+        return $this->hasOne(DireccionEntrega::class, 'user_id')->where('es_principal', true);
+    }
+
+    /**
+     * Verificar si el usuario es administrador
+     */
+    public function esAdmin()
+    {
+        return $this->is_admin;
+    }
+
+    /**
+     * Obtener o crear un carrito para el usuario
+     */
+    public function obtenerOCrearCarrito()
+    {
+        if (!$this->carrito) {
+            return $this->carrito()->create();
+        }
+        return $this->carrito;
     }
 }
