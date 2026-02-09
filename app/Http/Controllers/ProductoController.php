@@ -27,7 +27,7 @@ class ProductoController extends Controller
     }
 
     /**
-     * Mostrar productos por categoría
+     * Mostrar productos por categoría con vista específica
      */
     public function categoria($slug)
     {
@@ -38,7 +38,15 @@ class ProductoController extends Controller
             ->with(['imagenPrincipal'])
             ->paginate(12);
         
-        return view('productos.categoria', compact('categoria', 'productos'));
+        // Determinar qué vista usar según la categoría
+        $vista = match($slug) {
+            'nendoroid' => 'productos.categorias.nendoroid',
+            'photocards' => 'productos.categorias.photocards',
+            'llaveros' => 'productos.categorias.llaveros',
+            default => 'productos.categoria' // vista genérica por si acaso
+        };
+        
+        return view($vista, compact('categoria', 'productos'));
     }
 
     /**
