@@ -17,20 +17,24 @@
         <div class="col-md-6">
             <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
                 <div class="carousel-inner rounded shadow">
-                    @forelse($producto->imagenes as $index => $imagen)
-                    <div class="carousel-item {{ $index === 0 ? 'active' : '' }}">
-                        <img src="{{ asset('storage/' . $imagen->ruta) }}" 
+                    @if($producto->imagenes->count() > 0)
+                        @foreach($producto->imagenes as $index => $imagen)
+                        <div class="carousel-item {{ $index === 0 ? 'active' : '' }}">
+                            <img src="{{ imagen_o_defecto($imagen->ruta) }}" 
+                                 class="d-block w-100" 
+                                 alt="{{ $producto->nombre }}"
+                                 style="height: 400px; object-fit: cover;"
+                                 onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
+                        </div>
+                        @endforeach
+                    @else
+                    <div class="carousel-item active">
+                        <img src="{{ asset('img/NoImagen.jpg') }}" 
                              class="d-block w-100" 
                              alt="{{ $producto->nombre }}"
                              style="height: 400px; object-fit: cover;">
                     </div>
-                    @empty
-                    <div class="carousel-item active">
-                        <div class="bg-light d-flex align-items-center justify-content-center" style="height: 400px;">
-                            <i class="bi bi-image text-muted display-1"></i>
-                        </div>
-                    </div>
-                    @endforelse
+                    @endif
                 </div>
                 
                 @if($producto->imagenes->count() > 1)
@@ -48,9 +52,10 @@
             <div class="row mt-3 g-2">
                 @foreach($producto->imagenes as $imagen)
                 <div class="col-3">
-                    <img src="{{ asset('storage/' . $imagen->ruta) }}" 
+                    <img src="{{ imagen_o_defecto($imagen->ruta) }}" 
                          class="img-thumbnail" 
-                         style="cursor: pointer; height: 80px; object-fit: cover; width: 100%;">
+                         style="cursor: pointer; height: 80px; object-fit: cover; width: 100%;"
+                         onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
                 </div>
                 @endforeach
             </div>
@@ -130,16 +135,11 @@
             @foreach($relacionados as $relacionado)
             <div class="col-md-3">
                 <div class="card card-product shadow-sm h-100">
-                    @if($relacionado->imagenPrincipal)
-                        <img src="{{ asset('storage/' . $relacionado->imagenPrincipal->ruta) }}" 
-                             class="card-img-top" 
-                             alt="{{ $relacionado->nombre }}"
-                             style="height: 200px; object-fit: cover;">
-                    @else
-                        <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                            <i class="bi bi-image text-muted display-4"></i>
-                        </div>
-                    @endif
+                    <img src="{{ producto_imagen($relacionado) }}" 
+                         class="card-img-top" 
+                         alt="{{ $relacionado->nombre }}"
+                         style="height: 200px; object-fit: cover;"
+                         onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
                     
                     <div class="card-body">
                         <h5 class="card-title">{{ Str::limit($relacionado->nombre, 30) }}</h5>

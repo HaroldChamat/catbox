@@ -128,17 +128,11 @@
             <div class="card photocard-card h-100 shadow-sm">
                 {{-- Imagen --}}
                 <div class="position-relative">
-                    @if($producto->imagenPrincipal)
-                        <img src="{{ asset('storage/' . $producto->imagenPrincipal->ruta) }}" 
-                             class="card-img-top" 
-                             alt="{{ $producto->nombre }}"
-                             style="height: 300px; object-fit: cover;">
-                    @else
-                        <div class="d-flex align-items-center justify-content-center" 
-                             style="height: 300px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                            <i class="bi bi-card-image text-white display-2"></i>
-                        </div>
-                    @endif
+                    <img src="{{ producto_imagen($producto) }}" 
+                         class="card-img-top" 
+                         alt="{{ $producto->nombre }}"
+                         style="height: 300px; object-fit: cover;"
+                         onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
                     
                     {{-- Badge especial --}}
                     @if($producto->stock <= 5 && $producto->stock > 0)

@@ -28,12 +28,11 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        @if($item->producto->imagenPrincipal)
-                                            <img src="{{ asset('storage/' . $item->producto->imagenPrincipal->ruta) }}" 
-                                                 alt="{{ $item->producto->nombre }}"
-                                                 style="width: 60px; height: 60px; object-fit: cover;"
-                                                 class="rounded me-3">
-                                        @endif
+                                        <img src="{{ producto_imagen($item->producto) }}" 
+                                             alt="{{ $item->producto->nombre }}"
+                                             style="width: 60px; height: 60px; object-fit: cover;"
+                                             class="rounded me-3"
+                                             onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
                                         <div>
                                             <h6 class="mb-0">{{ $item->producto->nombre }}</h6>
                                             <small class="text-muted">{{ $item->producto->categoria->nombre }}</small>

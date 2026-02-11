@@ -4,51 +4,45 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\CarritoController;
 use App\Http\Controllers\OrdenController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\ProductoAdminController;
 
-/*
-|--------------------------------------------------------------------------
-| Rutas Públicas
-|--------------------------------------------------------------------------
-*/
+// ─────────────────────────────────────────────
+// RUTAS PÚBLICAS
+// ─────────────────────────────────────────────
 
-// Landing page
-Route::get('/', [ProductoController::class, 'index'])->name('home');
+// Landing page pública (sin login)
+Route::get('/', [ProductoController::class, 'landing'])->name('landing');
 
-// Productos
+// Catálogo de productos
 Route::get('/productos', [ProductoController::class, 'index'])->name('productos.index');
 Route::get('/productos/buscar', [ProductoController::class, 'buscar'])->name('productos.buscar');
 Route::get('/productos/{id}', [ProductoController::class, 'show'])->name('productos.show');
 Route::get('/categoria/{slug}', [ProductoController::class, 'categoria'])->name('productos.categoria');
 
-/*
-|--------------------------------------------------------------------------
-| Rutas de Autenticación
-|--------------------------------------------------------------------------
-*/
-
+// ─────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────
 Auth::routes();
 
-/*
-|--------------------------------------------------------------------------
-| Rutas Protegidas (Requieren autenticación)
-|--------------------------------------------------------------------------
-*/
-
+// ─────────────────────────────────────────────
+// RUTAS USUARIO AUTENTICADO
+// ─────────────────────────────────────────────
 Route::middleware(['auth'])->group(function () {
-    
-    // Dashboard del usuario
-    Route::get('/dashboard', [App\Http\Controllers\HomeController::class, 'index'])->name('dashboard');
-    
+
+    // Dashboard usuario
+    Route::get('/home', [HomeController::class, 'index'])->name('home');
+
     // Carrito
     Route::prefix('carrito')->name('carrito.')->group(function () {
         Route::get('/', [CarritoController::class, 'index'])->name('index');
-        Route::post('/agregar/{producto}', [CarritoController::class, 'agregar'])->name('agregar');
-        Route::put('/actualizar/{item}', [CarritoController::class, 'actualizar'])->name('actualizar');
-        Route::delete('/eliminar/{item}', [CarritoController::class, 'eliminar'])->name('eliminar');
+        Route::post('/agregar/{productoId}', [CarritoController::class, 'agregar'])->name('agregar');
+        Route::put('/actualizar/{itemId}', [CarritoController::class, 'actualizar'])->name('actualizar');
+        Route::delete('/eliminar/{itemId}', [CarritoController::class, 'eliminar'])->name('eliminar');
         Route::delete('/vaciar', [CarritoController::class, 'vaciar'])->name('vaciar');
     });
-    
+
     // Órdenes
     Route::prefix('ordenes')->name('ordenes.')->group(function () {
         Route::get('/', [OrdenController::class, 'index'])->name('index');
@@ -59,15 +53,21 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-/*
-|--------------------------------------------------------------------------
-| Rutas de Administrador
-|--------------------------------------------------------------------------
-*/
+// ─────────────────────────────────────────────
+// RUTAS ADMINISTRADOR
+// ─────────────────────────────────────────────
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
-Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
-    // Dashboard
     Route::get('/', [AdminController::class, 'index'])->name('dashboard');
-    
-    // Aquí irán más rutas de admin (productos, órdenes, etc.)
+
+    // Gestión de productos
+    Route::prefix('productos')->name('productos.')->group(function () {
+        Route::get('/', [ProductoAdminController::class, 'index'])->name('index');
+        Route::get('/crear', [ProductoAdminController::class, 'crear'])->name('crear');
+        Route::post('/', [ProductoAdminController::class, 'guardar'])->name('guardar');
+        Route::get('/{id}/editar', [ProductoAdminController::class, 'editar'])->name('editar');
+        Route::put('/{id}', [ProductoAdminController::class, 'actualizar'])->name('actualizar');
+        Route::delete('/{id}', [ProductoAdminController::class, 'eliminar'])->name('eliminar');
+        Route::delete('/{id}/imagen/{imgId}', [ProductoAdminController::class, 'eliminarImagen'])->name('eliminar-imagen');
+    });
 });

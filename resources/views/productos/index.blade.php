@@ -57,16 +57,11 @@
         @forelse($productosDestacados as $producto)
         <div class="col-md-3 col-sm-6">
             <div class="card card-product shadow-sm">
-                @if($producto->imagenPrincipal)
-                    <img src="{{ asset('storage/' . $producto->imagenPrincipal->ruta) }}" 
-                         class="card-img-top" 
-                         alt="{{ $producto->nombre }}"
-                         style="height: 200px; object-fit: cover;">
-                @else
-                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                        <i class="bi bi-image text-muted display-4"></i>
-                    </div>
-                @endif
+                <img src="{{ producto_imagen($producto) }}" 
+                     class="card-img-top" 
+                     alt="{{ $producto->nombre }}"
+                     style="height: 200px; object-fit: cover;"
+                     onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
                 
                 <div class="card-body">
                     <span class="badge bg-secondary mb-2">{{ $producto->categoria->nombre }}</span>

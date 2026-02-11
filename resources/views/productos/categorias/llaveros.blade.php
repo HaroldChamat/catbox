@@ -113,17 +113,11 @@
             <div class="card llavero-card h-100 shadow-sm">
                 {{-- Imagen --}}
                 <div class="position-relative">
-                    @if($producto->imagenPrincipal)
-                        <img src="{{ asset('storage/' . $producto->imagenPrincipal->ruta) }}" 
-                             class="card-img-top" 
-                             alt="{{ $producto->nombre }}"
-                             style="height: 250px; object-fit: cover;">
-                    @else
-                        <div class="d-flex align-items-center justify-content-center" 
-                             style="height: 250px; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                            <i class="bi bi-key-fill text-white display-2"></i>
-                        </div>
-                    @endif
+                    <img src="{{ producto_imagen($producto) }}" 
+                         class="card-img-top" 
+                         alt="{{ $producto->nombre }}"
+                         style="height: 250px; object-fit: cover;"
+                         onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
                     
                     {{-- Badge nuevo --}}
                     @if($producto->created_at->diffInDays(now()) < 7)

@@ -106,17 +106,11 @@
             <div class="card nendoroid-card h-100 shadow-sm">
                 {{-- Imagen del producto --}}
                 <div class="position-relative">
-                    @if($producto->imagenPrincipal)
-                        <img src="{{ asset('storage/' . $producto->imagenPrincipal->ruta) }}" 
-                             class="card-img-top" 
-                             alt="{{ $producto->nombre }}"
-                             style="height: 250px; object-fit: cover;">
-                    @else
-                        <div class="bg-gradient d-flex align-items-center justify-content-center" 
-                             style="height: 250px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                            <i class="bi bi-image text-white display-3"></i>
-                        </div>
-                    @endif
+                    <img src="{{ producto_imagen($producto) }}" 
+                         class="card-img-top" 
+                         alt="{{ $producto->nombre }}"
+                         style="height: 250px; object-fit: cover;"
+                         onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
                     
                     {{-- Badge de stock --}}
                     @if($producto->stock > 0)
