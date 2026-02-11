@@ -7,6 +7,9 @@ use App\Http\Controllers\OrdenController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\ProductoAdminController;
+use App\Http\Controllers\Admin\CategoriaAdminController;
+use App\Http\Controllers\Admin\OrdenAdminController;
+use App\Http\Controllers\Admin\EstadisticaController;
 
 // ─────────────────────────────────────────────
 // RUTAS PÚBLICAS
@@ -58,6 +61,7 @@ Route::middleware(['auth'])->group(function () {
 // ─────────────────────────────────────────────
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
+    // Dashboard admin
     Route::get('/', [AdminController::class, 'index'])->name('dashboard');
 
     // Gestión de productos
@@ -69,5 +73,28 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::put('/{id}', [ProductoAdminController::class, 'actualizar'])->name('actualizar');
         Route::delete('/{id}', [ProductoAdminController::class, 'eliminar'])->name('eliminar');
         Route::delete('/{id}/imagen/{imgId}', [ProductoAdminController::class, 'eliminarImagen'])->name('eliminar-imagen');
+    });
+
+    // Gestión de categorías
+    Route::prefix('categorias')->name('categorias.')->group(function () {
+        Route::get('/', [CategoriaAdminController::class, 'index'])->name('index');
+        Route::get('/crear', [CategoriaAdminController::class, 'crear'])->name('crear');
+        Route::post('/', [CategoriaAdminController::class, 'guardar'])->name('guardar');
+        Route::get('/{id}/editar', [CategoriaAdminController::class, 'editar'])->name('editar');
+        Route::put('/{id}', [CategoriaAdminController::class, 'actualizar'])->name('actualizar');
+        Route::delete('/{id}', [CategoriaAdminController::class, 'eliminar'])->name('eliminar');
+    });
+
+    // Gestión de órdenes
+    Route::prefix('ordenes')->name('ordenes.')->group(function () {
+        Route::get('/', [OrdenAdminController::class, 'index'])->name('index');
+        Route::get('/{id}', [OrdenAdminController::class, 'show'])->name('show');
+        Route::post('/{id}/estado', [OrdenAdminController::class, 'cambiarEstado'])->name('cambiar-estado');
+    });
+
+    // Estadísticas
+    Route::prefix('estadisticas')->name('estadisticas.')->group(function () {
+        Route::get('/', [EstadisticaController::class, 'index'])->name('index');
+        Route::get('/ventas-realtime', [EstadisticaController::class, 'ventasRealTime'])->name('ventas-realtime');
     });
 });

@@ -20,6 +20,12 @@
         color: white;
         background: rgba(233,69,96,.3);
     }
+    .filter-card {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
 </style>
 @endpush
 
@@ -33,6 +39,9 @@
             <ul class="nav flex-column">
                 <li><a class="nav-link" href="{{ route('admin.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
                 <li><a class="nav-link active" href="{{ route('admin.productos.index') }}"><i class="bi bi-box-seam me-2"></i>Productos</a></li>
+                <li><a class="nav-link" href="{{ route('admin.categorias.index') }}"><i class="bi bi-tag me-2"></i>Categorías</a></li>
+                <li><a class="nav-link" href="{{ route('admin.ordenes.index') }}"><i class="bi bi-receipt me-2"></i>Órdenes</a></li>
+                <li><a class="nav-link" href="{{ route('admin.estadisticas.index') }}"><i class="bi bi-graph-up me-2"></i>Estadísticas</a></li>
             </ul>
         </div>
 
@@ -47,6 +56,60 @@
                 <a href="{{ route('admin.productos.crear') }}" class="btn btn-admin px-4">
                     <i class="bi bi-plus-circle me-1"></i> Nuevo producto
                 </a>
+            </div>
+
+            {{-- Filtros --}}
+            <div class="filter-card">
+                <form method="GET" action="{{ route('admin.productos.index') }}">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-600 small">Buscar por nombre</label>
+                            <input type="text" name="nombre" class="form-control" 
+                                   placeholder="Nombre del producto" 
+                                   value="{{ request('nombre') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-600 small">Categoría</label>
+                            <select name="categoria_id" class="form-select">
+                                <option value="">Todas las categorías</option>
+                                @foreach($categorias as $cat)
+                                <option value="{{ $cat->id }}" {{ request('categoria_id') == $cat->id ? 'selected' : '' }}>
+                                    {{ $cat->nombre }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-600 small">Estado</label>
+                            <select name="activo" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="1" {{ request('activo') === '1' ? 'selected' : '' }}>Activos</option>
+                                <option value="0" {{ request('activo') === '0' ? 'selected' : '' }}>Inactivos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-600 small">Stock bajo</label>
+                            <div class="form-check mt-2">
+                                <input type="checkbox" name="stock_bajo" value="1" 
+                                       class="form-check-input" id="stockBajo"
+                                       {{ request('stock_bajo') ? 'checked' : '' }}>
+                                <label class="form-check-label" for="stockBajo">
+                                    Menos de 10
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search"></i> Filtrar
+                            </button>
+                            @if(request()->hasAny(['nombre', 'categoria_id', 'activo', 'stock_bajo']))
+                            <a href="{{ route('admin.productos.index') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x"></i>
+                            </a>
+                            @endif
+                        </div>
+                    </div>
+                </form>
             </div>
 
             <div class="card border-0 shadow-sm">
@@ -133,7 +196,7 @@
                 </div>
                 @if($productos->hasPages())
                 <div class="card-footer bg-white border-0 d-flex justify-content-center py-3">
-                    {{ $productos->links() }}
+                    {{ $productos->appends(request()->query())->links() }}
                 </div>
                 @endif
             </div>

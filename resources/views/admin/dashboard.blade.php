@@ -18,27 +18,22 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="{{ route('admin.productos.index') }}">
                             <i class="bi bi-box-seam"></i> Productos
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="{{ route('admin.categorias.index') }}">
                             <i class="bi bi-tag"></i> Categorías
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="{{ route('admin.ordenes.index') }}">
                             <i class="bi bi-receipt"></i> Órdenes
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="bi bi-people"></i> Usuarios
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">
+                        <a class="nav-link" href="{{ route('admin.estadisticas.index') }}">
                             <i class="bi bi-graph-up"></i> Estadísticas
                         </a>
                     </li>
@@ -48,7 +43,7 @@
 
                 <ul class="nav flex-column mb-2">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('home') }}">
+                        <a class="nav-link" href="{{ route('landing') }}">
                             <i class="bi bi-arrow-left"></i> Volver a la tienda
                         </a>
                     </li>
@@ -77,6 +72,9 @@
                                 <i class="bi bi-box-seam display-4 opacity-50"></i>
                             </div>
                         </div>
+                        <a href="{{ route('admin.productos.index') }}" class="card-footer text-white bg-primary bg-opacity-50 text-decoration-none">
+                            Ver todos <i class="bi bi-arrow-right"></i>
+                        </a>
                     </div>
                 </div>
 
@@ -91,6 +89,9 @@
                                 <i class="bi bi-receipt display-4 opacity-50"></i>
                             </div>
                         </div>
+                        <a href="{{ route('admin.ordenes.index') }}" class="card-footer text-white bg-success bg-opacity-50 text-decoration-none">
+                            Ver todas <i class="bi bi-arrow-right"></i>
+                        </a>
                     </div>
                 </div>
 
@@ -104,6 +105,9 @@
                                 </div>
                                 <i class="bi bi-people display-4 opacity-50"></i>
                             </div>
+                        </div>
+                        <div class="card-footer text-white bg-warning bg-opacity-50">
+                            Total registrados
                         </div>
                     </div>
                 </div>
@@ -119,6 +123,9 @@
                                 <i class="bi bi-currency-dollar display-4 opacity-50"></i>
                             </div>
                         </div>
+                        <a href="{{ route('admin.estadisticas.index') }}" class="card-footer text-white bg-danger bg-opacity-50 text-decoration-none">
+                            Ver estadísticas <i class="bi bi-arrow-right"></i>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -129,12 +136,14 @@
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>
                         <strong>{{ $stats['ordenes_pendientes'] }}</strong> órdenes pendientes de procesar
+                        <a href="{{ route('admin.ordenes.index', ['estado' => 'pendiente']) }}" class="alert-link">Ver órdenes</a>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="alert alert-danger">
                         <i class="bi bi-box-seam"></i>
                         <strong>{{ $stats['productos_bajo_stock'] }}</strong> productos con stock bajo (menos de 10)
+                        <a href="{{ route('admin.productos.index', ['stock_bajo' => 1]) }}" class="alert-link">Ver productos</a>
                     </div>
                 </div>
             </div>
@@ -190,6 +199,11 @@
                                 </table>
                             </div>
                         </div>
+                        <div class="card-footer bg-white text-center">
+                            <a href="{{ route('admin.ordenes.index') }}" class="btn btn-sm btn-outline-primary">
+                                Ver todas las órdenes <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
                     </div>
                 </div>
 
@@ -213,6 +227,11 @@
                             @empty
                             <p class="text-muted text-center">No hay datos disponibles</p>
                             @endforelse
+                        </div>
+                        <div class="card-footer bg-white text-center">
+                            <a href="{{ route('admin.estadisticas.index') }}" class="btn btn-sm btn-outline-success">
+                                Ver estadísticas completas <i class="bi bi-arrow-right"></i>
+                            </a>
                         </div>
                     </div>
                 </div>

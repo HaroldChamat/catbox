@@ -12,13 +12,36 @@ use Illuminate\Support\Str;
 
 class ProductoAdminController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $productos = Producto::with(['categoria', 'imagenPrincipal'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        $query = Producto::with(['categoria', 'imagenPrincipal']);
 
-        return view('admin.productos.index', compact('productos'));
+        // Filtro por nombre
+        if ($request->filled('nombre')) {
+            $query->where('nombre', 'like', '%' . $request->nombre . '%');
+        }
+
+        // Filtro por categoría
+        if ($request->filled('categoria_id')) {
+            $query->where('categoria_id', $request->categoria_id);
+        }
+
+        // Filtro por estado
+        if ($request->filled('activo')) {
+            $query->where('activo', $request->activo);
+        }
+
+        // Filtro por stock bajo
+        if ($request->filled('stock_bajo')) {
+            $query->where('stock', '<', 10);
+        }
+
+        $productos = $query->orderBy('created_at', 'desc')->paginate(15);
+
+        // Categorías para el filtro
+        $categorias = CategoriaProducto::orderBy('nombre')->get();
+
+        return view('admin.productos.index', compact('productos', 'categorias'));
     }
 
     public function crear()
