@@ -14,6 +14,9 @@ class ProductoAdminController extends Controller
 {
     public function index(Request $request)
     {
+        // Categorías para los filtros
+        $categorias = CategoriaProducto::orderBy('nombre')->get();
+        
         $query = Producto::with(['categoria', 'imagenPrincipal']);
 
         // Filtro por nombre
@@ -37,9 +40,6 @@ class ProductoAdminController extends Controller
         }
 
         $productos = $query->orderBy('created_at', 'desc')->paginate(15);
-
-        // Categorías para el filtro
-        $categorias = CategoriaProducto::orderBy('nombre')->get();
 
         return view('admin.productos.index', compact('productos', 'categorias'));
     }
@@ -101,7 +101,7 @@ class ProductoAdminController extends Controller
     {
         $producto = Producto::findOrFail($id);
 
-        $request->validate([
+        $validated = $request->validate([
             'nombre'       => 'required|string|max:255',
             'descripcion'  => 'nullable|string',
             'precio'       => 'required|numeric|min:0',
@@ -111,27 +111,38 @@ class ProductoAdminController extends Controller
             'imagenes.*'   => 'image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
+        // Actualizar solo los campos del formulario
         $producto->update([
-            'nombre'       => $request->nombre,
-            'descripcion'  => $request->descripcion,
-            'precio'       => $request->precio,
-            'stock'        => $request->stock,
-            'categoria_id' => $request->categoria_id,
-            'activo'       => $request->boolean('activo', true),
+            'nombre'       => $validated['nombre'],
+            'descripcion'  => $validated['descripcion'],
+            'precio'       => $validated['precio'],
+            'stock'        => $validated['stock'],
+            'categoria_id' => $validated['categoria_id'],
+            'activo'       => $request->has('activo') ? true : false,
         ]);
 
-        // Agregar nuevas imágenes
+        // Agregar nuevas imágenes si existen
         if ($request->hasFile('imagenes')) {
             $tienePrincipal = $producto->imagenes()->where('es_principal', true)->exists();
 
             foreach ($request->file('imagenes') as $index => $imagen) {
-                $ruta = $imagen->store('productos', 'public');
+                try {
+                    $ruta = $imagen->store('productos', 'public');
 
-                ImagenProducto::create([
-                    'producto_id'  => $producto->id,
-                    'ruta'         => $ruta,
-                    'es_principal' => !$tienePrincipal && $index === 0,
-                ]);
+                    ImagenProducto::create([
+                        'producto_id'  => $producto->id,
+                        'ruta'         => $ruta,
+                        'es_principal' => !$tienePrincipal && $index === 0,
+                    ]);
+
+                    // Después de agregar la primera imagen, ya hay principal
+                    if ($index === 0 && !$tienePrincipal) {
+                        $tienePrincipal = true;
+                    }
+                } catch (\Exception $e) {
+                    // Log del error pero continuar con las demás imágenes
+                    \Log::error('Error al guardar imagen: ' . $e->getMessage());
+                }
             }
         }
 

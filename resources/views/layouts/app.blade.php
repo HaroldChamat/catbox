@@ -231,9 +231,16 @@
                 <div class="col-md-4 mb-3">
                     <h6 class="fw-bold">Categorías</h6>
                     <ul class="list-unstyled text-muted small">
-                        <li><a href="{{ route('productos.categoria', 'nendoroid') }}" class="text-muted text-decoration-none">Nendoroid</a></li>
-                        <li><a href="{{ route('productos.categoria', 'photocards') }}" class="text-muted text-decoration-none">Photocards</a></li>
-                        <li><a href="{{ route('productos.categoria', 'llaveros') }}" class="text-muted text-decoration-none">Llaveros</a></li>
+                        @php
+                            $categoriasFooter = \App\Models\CategoriaProducto::orderBy('nombre')->get();
+                        @endphp
+                        @foreach($categoriasFooter as $cat)
+                        <li>
+                            <a href="{{ route('productos.categoria', $cat->slug) }}" class="text-muted text-decoration-none">
+                                <i class="bi bi-chevron-right small"></i> {{ $cat->nombre }}
+                            </a>
+                        </li>
+                        @endforeach
                     </ul>
                 </div>
                 <div class="col-md-4 mb-3">

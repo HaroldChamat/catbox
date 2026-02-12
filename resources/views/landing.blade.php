@@ -112,45 +112,74 @@
     </div>
 </section>
 
-{{-- ═══ CATEGORÍAS ═══ --}}
+{{-- ═══ CATEGORÍAS CON CARRUSEL ═══ --}}
 <section class="py-6" style="padding:80px 0; background: #f8f9fa;">
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="section-title">Explora por categoría</h2>
             <p class="text-muted">Encuentra exactamente lo que buscas</p>
         </div>
-        <div class="row g-4">
-            <div class="col-md-4">
-                <a href="{{ route('productos.categoria', 'nendoroid') }}" class="text-decoration-none">
-                    <div class="cat-card cat-nendoroid p-5 text-white text-center">
-                        <i class="bi bi-person-badge display-2 mb-3 d-block floating"></i>
-                        <h3 class="fw-800 mb-2">Nendoroid</h3>
-                        <p class="mb-0 opacity-75">Figuras coleccionables con partes intercambiables</p>
-                        <span class="badge bg-white text-dark mt-3">Ver colección →</span>
-                    </div>
-                </a>
+
+        @if($categorias->count() > 3)
+        {{-- Carrusel si hay más de 3 categorías --}}
+        <div id="categoriasCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-indicators">
+                @foreach($categorias->chunk(3) as $index => $chunk)
+                <button type="button" 
+                        data-bs-target="#categoriasCarousel" 
+                        data-bs-slide-to="{{ $index }}" 
+                        class="{{ $index === 0 ? 'active' : '' }}"
+                        style="background-color: #ff6b6b;"></button>
+                @endforeach
             </div>
-            <div class="col-md-4">
-                <a href="{{ route('productos.categoria', 'photocards') }}" class="text-decoration-none">
-                    <div class="cat-card cat-photocards p-5 text-white text-center">
-                        <i class="bi bi-card-image display-2 mb-3 d-block floating" style="animation-delay:.5s"></i>
-                        <h3 class="fw-800 mb-2">Photocards</h3>
-                        <p class="mb-0 opacity-75">Cards oficiales de tus artistas K-pop favoritos</p>
-                        <span class="badge bg-white text-dark mt-3">Ver colección →</span>
+
+            <div class="carousel-inner" style="background: #1a1a2e; border-radius: 20px; padding: 40px 20px;">
+                @foreach($categorias->chunk(3) as $index => $chunk)
+                <div class="carousel-item {{ $index === 0 ? 'active' : '' }}">
+                    <div class="row g-4">
+                        @foreach($chunk as $catIndex => $cat)
+                        <div class="col-md-4">
+                            <a href="{{ route('productos.categoria', $cat->slug) }}" class="text-decoration-none">
+                                <div class="cat-card {{ 'cat-' . ($catIndex % 3 == 0 ? 'nendoroid' : ($catIndex % 3 == 1 ? 'photocards' : 'llaveros')) }} p-5 text-white text-center">
+                                    <i class="bi bi-{{ $catIndex % 3 == 0 ? 'person-badge' : ($catIndex % 3 == 1 ? 'card-image' : 'key') }} display-2 mb-3 d-block floating" style="animation-delay:{{ $catIndex * 0.5 }}s"></i>
+                                    <h3 class="fw-800 mb-2">{{ $cat->nombre }}</h3>
+                                    <p class="mb-0 opacity-75">{{ $cat->descripcion ?? 'Descubre nuestra colección' }}</p>
+                                    <span class="badge bg-white text-dark mt-3">Ver colección →</span>
+                                </div>
+                            </a>
+                        </div>
+                        @endforeach
                     </div>
-                </a>
+                </div>
+                @endforeach
             </div>
-            <div class="col-md-4">
-                <a href="{{ route('productos.categoria', 'llaveros') }}" class="text-decoration-none">
-                    <div class="cat-card cat-llaveros p-5 text-white text-center">
-                        <i class="bi bi-key display-2 mb-3 d-block floating" style="animation-delay:1s"></i>
-                        <h3 class="fw-800 mb-2">Llaveros</h3>
-                        <p class="mb-0 opacity-75">Diseños únicos de anime, manga y videojuegos</p>
-                        <span class="badge bg-white text-dark mt-3">Ver colección →</span>
-                    </div>
-                </a>
-            </div>
+
+            <button class="carousel-control-prev" type="button" data-bs-target="#categoriasCarousel" data-bs-slide="prev" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                <span class="carousel-control-prev-icon" style="background-color: rgba(0,0,0,0.7); border-radius: 50%; padding: 20px;"></span>
+                <span class="visually-hidden">Anterior</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#categoriasCarousel" data-bs-slide="next" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                <span class="carousel-control-next-icon" style="background-color: rgba(0,0,0,0.7); border-radius: 50%; padding: 20px;"></span>
+                <span class="visually-hidden">Siguiente</span>
+            </button>
         </div>
+        @else
+        {{-- Grid estático si hay 3 o menos categorías --}}
+        <div class="row g-4">
+            @foreach($categorias as $catIndex => $cat)
+            <div class="col-md-4">
+                <a href="{{ route('productos.categoria', $cat->slug) }}" class="text-decoration-none">
+                    <div class="cat-card {{ 'cat-' . ($catIndex % 3 == 0 ? 'nendoroid' : ($catIndex % 3 == 1 ? 'photocards' : 'llaveros')) }} p-5 text-white text-center">
+                        <i class="bi bi-{{ $catIndex % 3 == 0 ? 'person-badge' : ($catIndex % 3 == 1 ? 'card-image' : 'key') }} display-2 mb-3 d-block floating" style="animation-delay:{{ $catIndex * 0.5 }}s"></i>
+                        <h3 class="fw-800 mb-2">{{ $cat->nombre }}</h3>
+                        <p class="mb-0 opacity-75">{{ $cat->descripcion ?? 'Descubre nuestra colección' }}</p>
+                        <span class="badge bg-white text-dark mt-3">Ver colección →</span>
+                    </div>
+                </a>
+            </div>
+            @endforeach
+        </div>
+        @endif
     </div>
 </section>
 
@@ -167,37 +196,66 @@
             </a>
         </div>
 
-        <div class="row g-4">
-            @forelse($productosDestacados as $producto)
-            <div class="col-lg-3 col-md-4 col-sm-6">
-                <div class="prod-card card h-100 shadow-sm">
-                    <div class="position-relative">
-                        <img src="{{ producto_imagen($producto) }}"
-                             alt="{{ $producto->nombre }}"
-                             style="height:220px;object-fit:cover;width:100%"
-                             onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
-                        <span class="position-absolute top-0 start-0 m-2 badge"
-                              style="background:{{ ['#667eea','#f5576c','#43e97b'][($loop->index % 3)] }}">
-                            {{ $producto->categoria->nombre }}
-                        </span>
-                    </div>
-                    <div class="card-body d-flex flex-column">
-                        <h6 class="fw-700 mb-1">{{ Str::limit($producto->nombre, 40) }}</h6>
-                        <p class="text-muted small flex-grow-1">{{ Str::limit($producto->descripcion, 60) }}</p>
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                            <span class="fw-800 text-danger fs-5">${{ number_format($producto->precio, 0, ',', '.') }}</span>
-                            <a href="{{ route('productos.show', $producto->id) }}" class="btn btn-sm btn-catbox">Ver más</a>
+        @if($productosDestacados->count() > 0)
+        <div id="productosCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-indicators">
+                @foreach($productosDestacados->chunk(4) as $index => $chunk)
+                <button type="button" 
+                        data-bs-target="#productosCarousel" 
+                        data-bs-slide-to="{{ $index }}" 
+                        class="{{ $index === 0 ? 'active' : '' }}"
+                        style="background-color: #ff6b6b;"></button>
+                @endforeach
+            </div>
+
+            <div class="carousel-inner" style="background: #1a1a2e; border-radius: 20px; padding: 40px 20px;">
+                @foreach($productosDestacados->chunk(4) as $index => $chunk)
+                <div class="carousel-item {{ $index === 0 ? 'active' : '' }}">
+                    <div class="row g-4 px-3">
+                        @foreach($chunk as $producto)
+                        <div class="col-lg-3 col-md-6">
+                            <div class="prod-card card h-100 shadow-sm">
+                                <div class="position-relative">
+                                    <img src="{{ producto_imagen($producto) }}"
+                                         alt="{{ $producto->nombre }}"
+                                         style="height:220px;object-fit:cover;width:100%"
+                                         onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
+                                    <span class="position-absolute top-0 start-0 m-2 badge"
+                                          style="background:{{ ['#667eea','#f5576c','#43e97b'][($loop->parent->index * 4 + $loop->index) % 3] }}">
+                                        {{ $producto->categoria->nombre }}
+                                    </span>
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                    <h6 class="fw-700 mb-1">{{ Str::limit($producto->nombre, 40) }}</h6>
+                                    <p class="text-muted small flex-grow-1">{{ Str::limit($producto->descripcion, 60) }}</p>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <span class="fw-800 text-danger fs-5">${{ number_format($producto->precio, 0, ',', '.') }}</span>
+                                        <a href="{{ route('productos.show', $producto->id) }}" class="btn btn-sm btn-catbox">Ver más</a>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                        @endforeach
                     </div>
                 </div>
+                @endforeach
             </div>
-            @empty
-            <div class="col-12 text-center py-5">
-                <i class="bi bi-inbox display-1 text-muted"></i>
-                <p class="text-muted mt-2">No hay productos disponibles aún</p>
-            </div>
-            @endforelse
+
+            <button class="carousel-control-prev" type="button" data-bs-target="#productosCarousel" data-bs-slide="prev" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                <span class="carousel-control-prev-icon" style="background-color: rgba(0,0,0,0.8); border-radius: 50%; padding: 20px; width: 50px; height: 50px;"></span>
+                <span class="visually-hidden">Anterior</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#productosCarousel" data-bs-slide="next" style="filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));">
+                <span class="carousel-control-next-icon" style="background-color: rgba(0,0,0,0.8); border-radius: 50%; padding: 20px; width: 50px; height: 50px;"></span>
+                <span class="visually-hidden">Siguiente</span>
+            </button>
         </div>
+        @else
+        <div class="text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="text-muted mt-2">No hay productos disponibles aún</p>
+        </div>
+        @endif
     </div>
 </section>
 
