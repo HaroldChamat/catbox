@@ -1,11 +1,100 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\CarritoController;
+use App\Http\Controllers\OrdenController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\ProductoAdminController;
+use App\Http\Controllers\Admin\CategoriaAdminController;
+use App\Http\Controllers\Admin\OrdenAdminController;
+use App\Http\Controllers\Admin\EstadisticaController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// ─────────────────────────────────────────────
+// RUTAS PÚBLICAS
+// ─────────────────────────────────────────────
 
+// Landing page pública (sin login)
+Route::get('/', [ProductoController::class, 'landing'])->name('landing');
+
+// Catálogo de productos
+Route::get('/productos', [ProductoController::class, 'index'])->name('productos.index');
+Route::get('/productos/buscar', [ProductoController::class, 'buscar'])->name('productos.buscar');
+Route::get('/productos/{id}', [ProductoController::class, 'show'])->name('productos.show');
+Route::get('/categoria/{slug}', [ProductoController::class, 'categoria'])->name('productos.categoria');
+
+// ─────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────
 Auth::routes();
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+// ─────────────────────────────────────────────
+// RUTAS USUARIO AUTENTICADO
+// ─────────────────────────────────────────────
+Route::middleware(['auth'])->group(function () {
+
+    // Dashboard usuario
+    Route::get('/home', [HomeController::class, 'index'])->name('home');
+
+    // Carrito
+    Route::prefix('carrito')->name('carrito.')->group(function () {
+        Route::get('/', [CarritoController::class, 'index'])->name('index');
+        Route::post('/agregar/{productoId}', [CarritoController::class, 'agregar'])->name('agregar');
+        Route::put('/actualizar/{itemId}', [CarritoController::class, 'actualizar'])->name('actualizar');
+        Route::delete('/eliminar/{itemId}', [CarritoController::class, 'eliminar'])->name('eliminar');
+        Route::delete('/vaciar', [CarritoController::class, 'vaciar'])->name('vaciar');
+    });
+
+    // Órdenes
+    Route::prefix('ordenes')->name('ordenes.')->group(function () {
+        Route::get('/', [OrdenController::class, 'index'])->name('index');
+        Route::get('/checkout', [OrdenController::class, 'checkout'])->name('checkout');
+        Route::post('/procesar', [OrdenController::class, 'procesar'])->name('procesar');
+        Route::get('/{id}', [OrdenController::class, 'show'])->name('show');
+        Route::get('/{id}/confirmacion', [OrdenController::class, 'confirmacion'])->name('confirmacion');
+    });
+});
+
+// ─────────────────────────────────────────────
+// RUTAS ADMINISTRADOR
+// ─────────────────────────────────────────────
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+
+    // Dashboard admin
+    Route::get('/', [AdminController::class, 'index'])->name('dashboard');
+
+    // Gestión de productos
+    Route::prefix('productos')->name('productos.')->group(function () {
+        Route::get('/', [ProductoAdminController::class, 'index'])->name('index');
+        Route::get('/crear', [ProductoAdminController::class, 'crear'])->name('crear');
+        Route::post('/', [ProductoAdminController::class, 'guardar'])->name('guardar');
+        Route::get('/{id}/editar', [ProductoAdminController::class, 'editar'])->name('editar');
+        Route::put('/{id}', [ProductoAdminController::class, 'actualizar'])->name('actualizar');
+        Route::delete('/{id}', [ProductoAdminController::class, 'eliminar'])->name('eliminar');
+        Route::delete('/{id}/imagen/{imgId}', [ProductoAdminController::class, 'eliminarImagen'])->name('eliminar-imagen');
+    });
+
+    // Gestión de categorías
+    Route::prefix('categorias')->name('categorias.')->group(function () {
+        Route::get('/', [CategoriaAdminController::class, 'index'])->name('index');
+        Route::get('/crear', [CategoriaAdminController::class, 'crear'])->name('crear');
+        Route::post('/', [CategoriaAdminController::class, 'guardar'])->name('guardar');
+        Route::get('/{id}/editar', [CategoriaAdminController::class, 'editar'])->name('editar');
+        Route::put('/{id}', [CategoriaAdminController::class, 'actualizar'])->name('actualizar');
+        Route::delete('/{id}', [CategoriaAdminController::class, 'eliminar'])->name('eliminar');
+    });
+
+    // Gestión de órdenes
+    Route::prefix('ordenes')->name('ordenes.')->group(function () {
+        Route::get('/', [OrdenAdminController::class, 'index'])->name('index');
+        Route::get('/{id}', [OrdenAdminController::class, 'show'])->name('show');
+        Route::post('/{id}/estado', [OrdenAdminController::class, 'cambiarEstado'])->name('cambiar-estado');
+    });
+
+    // Estadísticas
+    Route::prefix('estadisticas')->name('estadisticas.')->group(function () {
+        Route::get('/', [EstadisticaController::class, 'index'])->name('index');
+        Route::get('/ventas-realtime', [EstadisticaController::class, 'ventasRealTime'])->name('ventas-realtime');
+    });
+});
