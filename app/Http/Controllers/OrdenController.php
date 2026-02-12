@@ -34,11 +34,11 @@ class OrdenController extends Controller
      */
     public function show($id)
     {
-        $orden = Orden::with(['detalles.producto.imagenPrincipal', 'pago', 'user'])
+        $orden = Orden::with(['detalles.producto.imagenPrincipal', 'pago', 'user', 'direccion'])
             ->where('user_id', Auth::id())
             ->findOrFail($id);
         
-        // Obtener direcciones del usuario para poder agregar/cambiar
+        // Obtener direcciones del usuario
         $direcciones = Auth::user()->direcciones;
         
         return view('ordenes.show', compact('orden', 'direcciones'));
@@ -51,9 +51,9 @@ class OrdenController extends Controller
     {
         $orden = Orden::where('user_id', Auth::id())->findOrFail($id);
         
-        // Solo permitir actualizar si la orden está pendiente o procesando
-        if (!in_array($orden->estado, ['pendiente', 'procesando'])) {
-            return back()->with('error', 'No puedes editar una orden que ya fue enviada o entregada');
+        // No permitir editar si ya fue enviada
+        if (in_array($orden->estado, ['enviado', 'entregado', 'cancelado'])) {
+            return back()->with('error', 'No puedes editar una orden que ya fue enviada, entregada o cancelada');
         }
         
         $request->validate([
@@ -61,12 +61,23 @@ class OrdenController extends Controller
             'notas' => 'nullable|string|max:500',
         ]);
         
+        // Verificar que la dirección pertenece al usuario
+        if ($request->direccion_id) {
+            $direccion = \App\Models\DireccionEntrega::where('id', $request->direccion_id)
+                ->where('user_id', Auth::id())
+                ->first();
+            
+            if (!$direccion) {
+                return back()->with('error', 'Dirección no válida');
+            }
+        }
+        
         $orden->update([
             'direccion_id' => $request->direccion_id,
             'notas' => $request->notas,
         ]);
         
-        return back()->with('success', 'Información de la orden actualizada correctamente');
+        return back()->with('success', 'Información actualizada correctamente');
     }
     
     /**
@@ -83,23 +94,46 @@ class OrdenController extends Controller
         
         $request->validate([
             'metodo_pago' => 'required|in:tarjeta,paypal',
-            'numero_tarjeta' => 'required_if:metodo_pago,tarjeta|nullable|string',
-            'nombre_titular' => 'required_if:metodo_pago,tarjeta|nullable|string',
-            'fecha_expiracion' => 'required_if:metodo_pago,tarjeta|nullable|string',
-            'cvv' => 'required_if:metodo_pago,tarjeta|nullable|string',
-            'paypal_email' => 'required_if:metodo_pago,paypal|nullable|email',
+            'numero_tarjeta' => 'required_if:metodo_pago,tarjeta|nullable|string|min:13|max:19',
+            'nombre_titular' => 'required_if:metodo_pago,tarjeta|nullable|string|max:255',
+            'fecha_expiracion' => 'required_if:metodo_pago,tarjeta|nullable|string|regex:/^\d{2}\/\d{2}$/',
+            'cvv' => 'required_if:metodo_pago,tarjeta|nullable|string|min:3|max:4',
+            'paypal_email' => 'required_if:metodo_pago,paypal|nullable|email|max:255',
+        ], [
+            'numero_tarjeta.required_if' => 'El número de tarjeta es obligatorio',
+            'numero_tarjeta.min' => 'El número de tarjeta debe tener al menos 13 dígitos',
+            'nombre_titular.required_if' => 'El nombre del titular es obligatorio',
+            'fecha_expiracion.required_if' => 'La fecha de expiración es obligatoria',
+            'fecha_expiracion.regex' => 'La fecha debe tener el formato MM/AA',
+            'cvv.required_if' => 'El CVV es obligatorio',
+            'cvv.min' => 'El CVV debe tener al menos 3 dígitos',
+            'paypal_email.required_if' => 'El email de PayPal es obligatorio',
         ]);
+        
+        // Limpiar número de tarjeta (quitar espacios)
+        $numeroTarjeta = $request->metodo_pago === 'tarjeta' 
+            ? str_replace(' ', '', $request->numero_tarjeta) 
+            : null;
+        
+        // Preparar datos de pago
+        $datosPago = [
+            'metodo' => $request->metodo_pago,
+        ];
+        
+        if ($request->metodo_pago === 'tarjeta') {
+            $datosPago['ultimos_digitos'] = substr($numeroTarjeta, -4);
+            $datosPago['nombre_titular'] = $request->nombre_titular;
+        } else {
+            $datosPago['paypal_email'] = $request->paypal_email;
+        }
         
         // Actualizar o crear pago
         if ($orden->pago) {
             $orden->pago->update([
                 'metodo_pago' => $request->metodo_pago,
                 'estado' => 'completado',
-                'datos_pago' => [
-                    'metodo' => $request->metodo_pago,
-                    'ultimos_digitos' => $request->metodo_pago === 'tarjeta' ? substr($request->numero_tarjeta, -4) : null,
-                    'paypal_email' => $request->paypal_email,
-                ],
+                'monto' => $orden->total,
+                'datos_pago' => $datosPago,
             ]);
         } else {
             Pago::create([
@@ -108,18 +142,14 @@ class OrdenController extends Controller
                 'monto' => $orden->total,
                 'estado' => 'completado',
                 'transaction_id' => 'TXN-' . strtoupper(uniqid()),
-                'datos_pago' => [
-                    'metodo' => $request->metodo_pago,
-                    'ultimos_digitos' => $request->metodo_pago === 'tarjeta' ? substr($request->numero_tarjeta, -4) : null,
-                    'paypal_email' => $request->paypal_email,
-                ],
+                'datos_pago' => $datosPago,
             ]);
         }
         
         // Cambiar estado de la orden a procesando
         $orden->update(['estado' => 'procesando']);
         
-        return back()->with('success', '¡Pago completado! Tu orden está siendo procesada');
+        return back()->with('success', '¡Pago completado exitosamente! Tu orden está siendo procesada');
     }
     
     /**
@@ -146,7 +176,7 @@ class OrdenController extends Controller
             $orden->pago->update(['estado' => 'reembolsado']);
         }
         
-        return redirect()->route('ordenes.index')->with('success', 'Orden cancelada correctamente');
+        return redirect()->route('ordenes.index')->with('success', 'Orden cancelada correctamente. El stock ha sido devuelto.');
     }
 
     /**
@@ -193,7 +223,8 @@ class OrdenController extends Controller
                 'user_id' => Auth::id(),
                 'total' => $carrito->calcularTotal(),
                 'estado' => 'pendiente',
-                'fecha_entrega_estimada' => now()->addDays(5)
+                'fecha_entrega_estimada' => now()->addDays(5),
+                'direccion_id' => $request->direccion_id,
             ]);
 
             // Crear detalles de la orden
@@ -228,8 +259,8 @@ class OrdenController extends Controller
 
             DB::commit();
 
-            return redirect()->route('ordenes.confirmacion', $orden->id)
-                ->with('success', 'Orden creada exitosamente');
+            return redirect()->route('ordenes.show', $orden->id)
+                ->with('success', 'Orden creada exitosamente. Por favor completa la información de pago.');
 
         } catch (\Exception $e) {
             DB::rollBack();
