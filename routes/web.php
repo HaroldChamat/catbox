@@ -10,6 +10,8 @@ use App\Http\Controllers\Admin\ProductoAdminController;
 use App\Http\Controllers\Admin\CategoriaAdminController;
 use App\Http\Controllers\Admin\OrdenAdminController;
 use App\Http\Controllers\Admin\EstadisticaController;
+use App\Http\Controllers\DireccionController;
+
 
 // ─────────────────────────────────────────────
 // RUTAS PÚBLICAS
@@ -53,6 +55,22 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/procesar', [OrdenController::class, 'procesar'])->name('procesar');
         Route::get('/{id}', [OrdenController::class, 'show'])->name('show');
         Route::get('/{id}/confirmacion', [OrdenController::class, 'confirmacion'])->name('confirmacion');
+    });
+
+    // Direcciones de entrega
+    Route::prefix('direcciones')->name('direcciones.')->group(function () {
+    Route::post('/', [DireccionController::class, 'guardar'])->name('guardar');
+    Route::post('/{id}/principal', [DireccionController::class, 'establecerPrincipal'])->name('principal');
+    Route::delete('/{id}', [DireccionController::class, 'eliminar'])->name('eliminar');
+    });
+
+    // Rutas de órdenes
+    Route::prefix('ordenes')->name('ordenes.')->group(function () {
+    Route::get('/', [OrdenController::class, 'index'])->name('index');
+    Route::get('/{id}', [OrdenController::class, 'show'])->name('show');
+    Route::put('/{id}/actualizar-info', [OrdenController::class, 'actualizarInfo'])->name('actualizar-info');
+    Route::put('/{id}/completar-pago', [OrdenController::class, 'completarPago'])->name('completar-pago');
+    Route::delete('/{id}/cancelar', [OrdenController::class, 'cancelar'])->name('cancelar');
     });
 });
 
