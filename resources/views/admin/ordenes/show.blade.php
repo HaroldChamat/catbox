@@ -20,6 +20,13 @@
         color: white;
         background: rgba(233,69,96,.3);
     }
+    .nota-usuario-card {
+        background: linear-gradient(135deg, #fff5e6 0%, #ffe6cc 100%);
+        border-left: 4px solid #ff9800;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
 </style>
 @endpush
 
@@ -54,6 +61,26 @@
 
             <div class="row">
                 <div class="col-lg-8">
+                    {{-- Notas del usuario --}}
+                    @if($orden->notas)
+                    <div class="nota-usuario-card">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="bi bi-chat-left-quote-fill text-warning fs-4"></i>
+                            <div class="flex-grow-1">
+                                <h6 class="fw-700 mb-2 text-dark">
+                                    <i class="bi bi-person-circle me-1"></i>
+                                    Notas del Cliente
+                                </h6>
+                                <p class="mb-0 fst-italic text-dark">"{{ $orden->notas }}"</p>
+                                <small class="text-muted d-block mt-2">
+                                    <i class="bi bi-clock me-1"></i>
+                                    Agregada el {{ $orden->updated_at->format('d/m/Y H:i') }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     {{-- Productos --}}
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white">
@@ -117,6 +144,23 @@
                             </div>
                         </div>
                     </div>
+
+                    {{-- Dirección de entrega --}}
+                    @if($orden->direccion)
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <h6 class="fw-700 mb-0"><i class="bi bi-geo-alt me-2"></i>Dirección de entrega</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="p-3 bg-light rounded">
+                                <p class="mb-2"><i class="bi bi-house-door text-primary me-2"></i><strong>{{ $orden->direccion->direccion }}</strong></p>
+                                <p class="mb-2"><i class="bi bi-building text-primary me-2"></i>{{ $orden->direccion->ciudad }}</p>
+                                <p class="mb-2"><i class="bi bi-mailbox text-primary me-2"></i>CP: {{ $orden->direccion->codigo_postal }}</p>
+                                <p class="mb-0"><i class="bi bi-telephone text-primary me-2"></i>{{ $orden->direccion->telefono }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
 
                     {{-- Estado --}}
                     <div class="card border-0 shadow-sm mb-4">

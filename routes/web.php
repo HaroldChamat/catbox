@@ -115,4 +115,21 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/', [EstadisticaController::class, 'index'])->name('index');
         Route::get('/ventas-realtime', [EstadisticaController::class, 'ventasRealTime'])->name('ventas-realtime');
     });
+
+    // RUTA TEMPORAL DE DEBUGGING - ELIMINAR DESPUÉS DE SOLUCIONAR
+    Route::middleware(['auth', 'admin'])->get('/debug/producto/{id}', function($id) {
+    $producto = \App\Models\Producto::with(['imagenes', 'categoria'])->findOrFail($id);
+    
+    return response()->json([
+        'producto' => $producto,
+        'fillable' => $producto->getFillable(),
+        'casts' => $producto->getCasts(),
+        'attributes' => $producto->getAttributes(),
+        'relaciones' => [
+            'imagenes_count' => $producto->imagenes->count(),
+            'tiene_principal' => $producto->imagenes()->where('es_principal', true)->exists(),
+            'categoria' => $producto->categoria->nombre
+        ]
+    ]);
+    })->name('debug.producto');
 });
