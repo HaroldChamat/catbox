@@ -18,6 +18,8 @@ class Orden extends Model
         'total',
         'estado',
         'fecha_entrega_estimada',
+        'direccion_id',
+        'notas',
     ];
 
     protected $casts = [
@@ -64,10 +66,26 @@ class Orden extends Model
     }
 
     /**
+     * Relación: Una orden tiene una dirección de entrega
+     */
+    public function direccion()
+    {
+        return $this->belongsTo(DireccionEntrega::class, 'direccion_id');
+    }
+
+    /**
      * Calcular el total de la orden desde sus detalles
      */
     public function calcularTotal()
     {
         return $this->detalles->sum('subtotal');
+    }
+
+    /**
+     * Verificar si la orden puede ser editada
+     */
+    public function puedeEditarse()
+    {
+        return in_array($this->estado, ['pendiente', 'procesando']);
     }
 }
