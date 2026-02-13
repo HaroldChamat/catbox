@@ -33,6 +33,14 @@ class HomeController extends Controller
 
         $totalOrdenes = $user->ordenes()->count();
 
-        return view('usuario.dashboard', compact('ordenesRecientes', 'totalGastado', 'totalOrdenes'));
+        // Obtener direcciones del usuario
+        $direcciones = $user->direcciones()->get();
+
+        return view('usuario.dashboard', compact(
+            'ordenesRecientes', 
+            'totalGastado', 
+            'totalOrdenes',
+            'direcciones'
+        ));
     }
 }

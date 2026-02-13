@@ -122,6 +122,13 @@ class ProductoController extends Controller
     public function buscar(Request $request)
     {
         $query = $request->input('q');
+        
+        if (empty($query)) {
+            return redirect()->route('productos.index');
+        }
+        
+        $categorias = CategoriaProducto::all();
+        
         $productos = Producto::where('activo', true)
             ->where(function ($q) use ($query) {
                 $q->where('nombre', 'like', "%{$query}%")
@@ -129,6 +136,7 @@ class ProductoController extends Controller
             })
             ->with(['categoria', 'imagenPrincipal'])
             ->paginate(12);
-        return view('productos.buscar', compact('productos', 'query'));
+            
+        return view('productos.buscar', compact('productos', 'query', 'categorias'));
     }
 }
