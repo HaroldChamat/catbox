@@ -107,12 +107,16 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::prefix('ordenes')->name('ordenes.')->group(function () {
         Route::get('/', [OrdenAdminController::class, 'index'])->name('index');
         Route::get('/{id}', [OrdenAdminController::class, 'show'])->name('show');
-        Route::post('/{id}/estado', [OrdenAdminController::class, 'cambiarEstado'])->name('cambiar-estado');
+        Route::put('/{id}/estado', [OrdenAdminController::class, 'updateEstado'])->name('updateestado');
+        Route::delete('/{id}', [OrdenAdminController::class, 'destroy'])->name('destroy');
     });
 
     // Estadísticas
     Route::prefix('estadisticas')->name('estadisticas.')->group(function () {
         Route::get('/', [EstadisticaController::class, 'index'])->name('index');
+        Route::get('/ventas', [EstadisticaController::class, 'ventas'])->name('ventas');
+        Route::get('/productos', [EstadisticaController::class, 'productos'])->name('productos');
+        Route::get('/clientes', [EstadisticaController::class, 'clientes'])->name('clientes');
         Route::get('/ventas-realtime', [EstadisticaController::class, 'ventasRealTime'])->name('ventas-realtime');
     });
 

@@ -168,8 +168,9 @@
                             <h6 class="fw-700 mb-0"><i class="bi bi-truck me-2"></i>Estado</h6>
                         </div>
                         <div class="card-body">
-                            <form action="{{ route('admin.ordenes.cambiar-estado', $orden->id) }}" method="POST">
+                            <form action="{{ route('admin.ordenes.updateestado', $orden->id) }}" method="POST">
                                 @csrf
+                                @method('PUT')
                                 <select name="estado" class="form-select mb-3">
                                     <option value="pendiente" {{ $orden->estado == 'pendiente' ? 'selected' : '' }}>Pendiente</option>
                                     <option value="procesando" {{ $orden->estado == 'procesando' ? 'selected' : '' }}>Procesando</option>
