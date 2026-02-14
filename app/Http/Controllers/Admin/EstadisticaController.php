@@ -63,17 +63,15 @@ class EstadisticaController extends Controller
         
         $stats = $this->getGeneralStats($fechaDesde, $fechaHasta, $categoriaId);
         
-        // Agregar ventasStats que la vista espera
         $ventasStats = [
             'total_ventas' => $stats['total_ventas'],
             'promedio_venta' => $stats['ticket_promedio'],
             'venta_mayor' => Orden::whereIn('estado', ['procesando', 'enviado', 'entregado'])
-                ->whereBetween('created_at', [$fechaDesde, $fechaHasta])
+                ->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'])
                 ->max('total') ?? 0,
             'total_ordenes' => $stats['total_ordenes'],
         ];
         
-        // Ventas por categoría y por hora para las gráficas
         $ventasPorCategoria = $this->getVentasPorCategoria($fechaDesde, $fechaHasta);
         $ventasPorHora = $this->getVentasPorHora($fechaDesde, $fechaHasta, $categoriaId);
         $ventasPorDia = $this->getVentasPorDia($fechaDesde, $fechaHasta, $categoriaId);
@@ -106,7 +104,7 @@ class EstadisticaController extends Controller
             ->get();
         
         $productosSinVentas = Producto::whereDoesntHave('detallesOrden', function($q) use ($fechaDesde, $fechaHasta) {
-                $q->whereBetween('created_at', [$fechaDesde, $fechaHasta]);
+                $q->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59']);
             })
             ->with(['categoria', 'imagenPrincipal'])
             ->when($categoriaId, fn($q) => $q->where('categoria_id', $categoriaId))
@@ -123,48 +121,62 @@ class EstadisticaController extends Controller
     // Análisis de clientes
     public function clientes(Request $request)
     {
-    $periodo = $request->get('periodo', '30');
-    $limite = $request->get('limite', 20);
-    $fechaDesde = $request->get('fecha_desde', now()->subDays($periodo)->format('Y-m-d'));
-    $fechaHasta = $request->get('fecha_hasta', now()->format('Y-m-d'));
-    
-    // Top clientes con mapeo correcto de variables
-    $topClientes = User::where('is_admin', false)
-        ->withSum(['ordenes' => fn($q) => $q->whereIn('estado', ['procesando', 'enviado', 'entregado'])
-            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])], 'total')
-        ->withCount(['ordenes' => fn($q) => $q->whereBetween('created_at', [$fechaDesde, $fechaHasta])])
-        ->having('ordenes_sum_total', '>', 0)
-        ->orderByDesc('ordenes_sum_total')
-        ->limit($limite)
-        ->get()
-        ->map(function($cliente) {
-            // Mapear a nombres de variables que la vista espera
-            $cliente->total_gastado = $cliente->ordenes_sum_total ?? 0;
-            $cliente->total_ordenes = $cliente->ordenes_count ?? 0;
-            return $cliente;
-        });
-    
-    $clientesNuevos = User::where('is_admin', false)
-        ->whereBetween('created_at', [$fechaDesde, $fechaHasta])
-        ->withCount('ordenes')
-        ->orderBy('created_at', 'desc')
-        ->limit(10)
-        ->get();
-    
-    // Esta variable estaba faltando y era la causa del error
-    $clientesStats = [
-        'total_clientes' => User::where('is_admin', false)->count(),
-        'clientes_nuevos' => User::where('is_admin', false)
-            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])->count(),
-        'clientes_activos' => User::where('is_admin', false)
-            ->whereHas('ordenes', fn($q) => $q->whereBetween('created_at', [$fechaDesde, $fechaHasta]))->count(),
-        'ticket_promedio' => Orden::whereIn('estado', ['procesando', 'enviado', 'entregado'])
-            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])->avg('total') ?? 0,
-    ];
-    
-    return view('admin.estadisticas.clientes', compact(
-        'topClientes', 'clientesNuevos', 'clientesStats', 'periodo', 'limite', 'fechaDesde', 'fechaHasta'
-    ));
+        $periodo = $request->get('periodo', '30');
+        $limite = $request->get('limite', 20);
+        $ordenar = $request->get('ordenar', 'mayor_gasto');
+        $fechaDesde = $request->get('fecha_desde', now()->subDays($periodo)->format('Y-m-d'));
+        $fechaHasta = $request->get('fecha_hasta', now()->format('Y-m-d'));
+        
+        // Top clientes con ordenamiento configurable
+        $query = User::where('is_admin', false)
+            ->withSum(['ordenes' => fn($q) => $q->whereIn('estado', ['procesando', 'enviado', 'entregado'])
+                ->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'])], 'total')
+            ->withCount(['ordenes' => fn($q) => $q->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'])])
+            ->having('ordenes_sum_total', '>', 0);
+        
+        // Aplicar ordenamiento
+        switch ($ordenar) {
+            case 'menor_gasto':
+                $query->orderBy('ordenes_sum_total', 'asc');
+                break;
+            case 'mas_ordenes':
+                $query->orderByDesc('ordenes_count');
+                break;
+            case 'menos_ordenes':
+                $query->orderBy('ordenes_count', 'asc');
+                break;
+            default: // mayor_gasto
+                $query->orderByDesc('ordenes_sum_total');
+        }
+        
+        $topClientes = $query->limit($limite)
+            ->get()
+            ->map(function($cliente) {
+                $cliente->total_gastado = $cliente->ordenes_sum_total ?? 0;
+                $cliente->total_ordenes = $cliente->ordenes_count ?? 0;
+                return $cliente;
+            });
+        
+        $clientesNuevos = User::where('is_admin', false)
+            ->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'])
+            ->withCount('ordenes')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        
+        $clientesStats = [
+            'total_clientes' => User::where('is_admin', false)->count(),
+            'clientes_nuevos' => User::where('is_admin', false)
+                ->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'])->count(),
+            'clientes_activos' => User::where('is_admin', false)
+                ->whereHas('ordenes', fn($q) => $q->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59']))->count(),
+            'ticket_promedio' => Orden::whereIn('estado', ['procesando', 'enviado', 'entregado'])
+                ->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'])->avg('total') ?? 0,
+        ];
+        
+        return view('admin.estadisticas.clientes', compact(
+            'topClientes', 'clientesNuevos', 'clientesStats', 'periodo', 'limite', 'ordenar', 'fechaDesde', 'fechaHasta'
+        ));
     }
 
     public function ventasRealTime()
@@ -180,19 +192,23 @@ class EstadisticaController extends Controller
     // MÉTODOS AUXILIARES
     private function getGeneralStats($fechaDesde, $fechaHasta, $categoriaId = null)
     {
-        $query = Orden::whereIn('estado', ['procesando', 'enviado', 'entregado'])
-            ->whereBetween('created_at', [$fechaDesde, $fechaHasta]);
+        $fechaDesdeCompleta = $fechaDesde . ' 00:00:00';
+        $fechaHastaCompleta = $fechaHasta . ' 23:59:59';
         
-        $queryDetalles = DetalleOrden::whereBetween('created_at', [$fechaDesde, $fechaHasta]);
+        $query = Orden::whereIn('estado', ['procesando', 'enviado', 'entregado'])
+            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta]);
+        
+        $queryDetalles = DetalleOrden::whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta]);
+        
         if ($categoriaId) {
             $queryDetalles->whereHas('producto', fn($q) => $q->where('categoria_id', $categoriaId));
         }
         
         return [
             'total_ventas' => $query->sum('total'),
-            'total_ordenes' => Orden::whereBetween('created_at', [$fechaDesde, $fechaHasta])->count(),
+            'total_ordenes' => Orden::whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta])->count(),
             'productos_vendidos' => $queryDetalles->sum('cantidad'),
-            'ticket_promedio' => $query->avg('total'),
+            'ticket_promedio' => $query->avg('total') ?? 0,
         ];
     }
     
@@ -224,6 +240,9 @@ class EstadisticaController extends Controller
     
     private function getTopProductos($fechaDesde, $fechaHasta, $categoriaId, $limite)
     {
+        $fechaDesdeCompleta = $fechaDesde . ' 00:00:00';
+        $fechaHastaCompleta = $fechaHasta . ' 23:59:59';
+        
         return DetalleOrden::select(
                 'producto_id',
                 DB::raw('SUM(cantidad) as total_vendido'),
@@ -231,7 +250,7 @@ class EstadisticaController extends Controller
                 DB::raw('COUNT(DISTINCT orden_id) as num_ordenes')
             )
             ->with('producto.imagenPrincipal')
-            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])
+            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta])
             ->when($categoriaId, fn($q) => $q->whereHas('producto', fn($q2) => $q2->where('categoria_id', $categoriaId)))
             ->groupBy('producto_id')
             ->orderByDesc('total_ingresos')
@@ -241,13 +260,16 @@ class EstadisticaController extends Controller
     
     private function getVentasPorDia($fechaDesde, $fechaHasta, $categoriaId = null)
     {
+        $fechaDesdeCompleta = $fechaDesde . ' 00:00:00';
+        $fechaHastaCompleta = $fechaHasta . ' 23:59:59';
+        
         return Orden::select(
                 DB::raw('DATE(created_at) as fecha'),
                 DB::raw('COUNT(*) as ordenes'),
                 DB::raw('SUM(total) as ingresos')
             )
             ->whereIn('estado', ['procesando', 'enviado', 'entregado'])
-            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])
+            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta])
             ->groupBy('fecha')
             ->orderBy('fecha', 'asc')
             ->get();
@@ -255,13 +277,16 @@ class EstadisticaController extends Controller
     
     private function getVentasPorHora($fechaDesde, $fechaHasta, $categoriaId = null)
     {
+        $fechaDesdeCompleta = $fechaDesde . ' 00:00:00';
+        $fechaHastaCompleta = $fechaHasta . ' 23:59:59';
+        
         return Orden::select(
                 DB::raw('HOUR(created_at) as hora'),
                 DB::raw('COUNT(*) as ordenes'),
                 DB::raw('SUM(total) as ingresos')
             )
             ->whereIn('estado', ['procesando', 'enviado', 'entregado'])
-            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])
+            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta])
             ->groupBy('hora')
             ->orderBy('hora', 'asc')
             ->get();
@@ -269,31 +294,47 @@ class EstadisticaController extends Controller
     
     private function getVentasPorCategoria($fechaDesde, $fechaHasta)
     {
-        return DetalleOrden::select(
-                'productos.categoria_id',
+        $fechaDesdeCompleta = $fechaDesde . ' 00:00:00';
+        $fechaHastaCompleta = $fechaHasta . ' 23:59:59';
+        
+        return CategoriaProducto::select('categorias_producto.id', 'categorias_producto.nombre')
+            ->join('productos', 'productos.categoria_id', '=', 'categorias_producto.id')
+            ->join('detalles_orden', 'detalles_orden.producto_id', '=', 'productos.id')
+            ->whereBetween('detalles_orden.created_at', [$fechaDesdeCompleta, $fechaHastaCompleta])
+            ->groupBy('categorias_producto.id', 'categorias_producto.nombre')
+            ->select(
+                'categorias_producto.id',
+                'categorias_producto.nombre',
                 DB::raw('SUM(detalles_orden.cantidad) as total_vendido'),
                 DB::raw('SUM(detalles_orden.subtotal) as total_ingresos'),
                 DB::raw('COUNT(DISTINCT detalles_orden.orden_id) as num_ordenes')
             )
-            ->join('productos', 'detalles_orden.producto_id', '=', 'productos.id')
-            ->whereBetween('detalles_orden.created_at', [$fechaDesde, $fechaHasta])
-            ->groupBy('productos.categoria_id')
-            ->with('producto.categoria')
             ->get();
     }
     
     private function getDistribucionEstados($fechaDesde, $fechaHasta)
     {
-        return Orden::select('estado', DB::raw('COUNT(*) as total'))
-            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])
+        $fechaDesdeCompleta = $fechaDesde . ' 00:00:00';
+        $fechaHastaCompleta = $fechaHasta . ' 23:59:59';
+        
+        $resultados = Orden::select('estado', DB::raw('COUNT(*) as total'))
+            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta])
             ->groupBy('estado')
-            ->get()
-            ->pluck('total', 'estado')
-            ->toArray();
+            ->get();
+        
+        return $resultados->map(function($item) {
+            return [
+                'estado' => $item->estado,
+                'total' => $item->total
+            ];
+        });
     }
     
     private function getProductosAnalisis($fechaDesde, $fechaHasta, $categoriaId, $ordenar, $limite)
     {
+        $fechaDesdeCompleta = $fechaDesde . ' 00:00:00';
+        $fechaHastaCompleta = $fechaHasta . ' 23:59:59';
+        
         $query = DetalleOrden::select(
                 'producto_id',
                 DB::raw('SUM(cantidad) as total_vendido'),
@@ -301,7 +342,7 @@ class EstadisticaController extends Controller
                 DB::raw('COUNT(DISTINCT orden_id) as num_ordenes')
             )
             ->with(['producto.imagenPrincipal', 'producto.categoria'])
-            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])
+            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta])
             ->when($categoriaId, fn($q) => $q->whereHas('producto', fn($q2) => $q2->where('categoria_id', $categoriaId)))
             ->groupBy('producto_id');
         
@@ -311,6 +352,22 @@ class EstadisticaController extends Controller
                 break;
             case 'mas_ordenes':
                 $query->orderByDesc('num_ordenes');
+                break;
+            case 'precio_mayor':
+                $query->join('productos', 'detalles_orden.producto_id', '=', 'productos.id')
+                    ->orderByDesc('productos.precio')
+                    ->select('detalles_orden.producto_id', 
+                            DB::raw('SUM(detalles_orden.cantidad) as total_vendido'),
+                            DB::raw('SUM(detalles_orden.subtotal) as total_ingresos'),
+                            DB::raw('COUNT(DISTINCT detalles_orden.orden_id) as num_ordenes'));
+                break;
+            case 'precio_menor':
+                $query->join('productos', 'detalles_orden.producto_id', '=', 'productos.id')
+                    ->orderBy('productos.precio')
+                    ->select('detalles_orden.producto_id', 
+                            DB::raw('SUM(detalles_orden.cantidad) as total_vendido'),
+                            DB::raw('SUM(detalles_orden.subtotal) as total_ingresos'),
+                            DB::raw('COUNT(DISTINCT detalles_orden.orden_id) as num_ordenes'));
                 break;
             default:
                 $query->orderByDesc('total_vendido');

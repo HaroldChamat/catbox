@@ -191,25 +191,26 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @forelse($topProductos as $item)
+                                        @forelse($topProductos->take(5) as $item)
                                         <tr>
                                             <td>
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <img src="{{ producto_imagen($item->producto) }}" 
-                                                         style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px;"
-                                                         onerror="this.src='{{ asset('img/NoImagen.jpg') }}'">
+                                                <div class="d-flex align-items-center">
+                                                    @if($item->producto->imagenPrincipal)
+                                                    <img src="{{ asset('storage/' . $item->producto->imagenPrincipal->ruta) }}" 
+                                                         alt="{{ $item->producto->nombre }}"
+                                                         style="width: 40px; height: 40px; object-fit: cover;" 
+                                                         class="rounded me-2">
+                                                    @endif
                                                     <div>
                                                         <div class="fw-600 small">{{ Str::limit($item->producto->nombre, 30) }}</div>
-                                                        <small class="text-muted">{{ $item->producto->categoria->nombre }}</small>
+                                                        <small class="text-muted">{{ $item->producto->categoria->nombre ?? 'Sin categoría' }}</small>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-primary">{{ $item->total_vendido }}</span>
+                                            <td class="text-center align-middle">
+                                                <span class="badge bg-light text-dark">{{ $item->total_vendido }}</span>
                                             </td>
-                                            <td class="text-end fw-700 text-success">
-                                                ${{ number_format($item->total_ingresos, 0, ',', '.') }}
-                                            </td>
+                                            <td class="text-end align-middle fw-600">${{ number_format($item->total_ingresos, 0, ',', '.') }}</td>
                                         </tr>
                                         @empty
                                         <tr>
@@ -223,35 +224,14 @@
                     </div>
                 </div>
 
-                {{-- Accesos rápidos --}}
+                {{-- Ventas por Categoría con nombres --}}
                 <div class="col-lg-6">
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white border-0">
-                            <h6 class="fw-700 mb-0">Análisis Detallado</h6>
+                            <h6 class="fw-700 mb-0">Ventas por Categoría</h6>
                         </div>
                         <div class="card-body">
-                            <div class="d-grid gap-2">
-                                <a href="{{ route('admin.estadisticas.ventas') }}" class="btn btn-outline-primary text-start">
-                                    <i class="bi bi-currency-dollar me-2"></i>
-                                    Análisis de Ventas
-                                    <i class="bi bi-chevron-right float-end"></i>
-                                </a>
-                                <a href="{{ route('admin.estadisticas.productos') }}" class="btn btn-outline-success text-start">
-                                    <i class="bi bi-box-seam me-2"></i>
-                                    Rendimiento de Productos
-                                    <i class="bi bi-chevron-right float-end"></i>
-                                </a>
-                                <a href="{{ route('admin.estadisticas.clientes') }}" class="btn btn-outline-warning text-start">
-                                    <i class="bi bi-people me-2"></i>
-                                    Análisis de Clientes
-                                    <i class="bi bi-chevron-right float-end"></i>
-                                </a>
-                                <a href="{{ route('admin.ordenes.index') }}" class="btn btn-outline-info text-start">
-                                    <i class="bi bi-receipt me-2"></i>
-                                    Gestión de Órdenes
-                                    <i class="bi bi-chevron-right float-end"></i>
-                                </a>
-                            </div>
+                            <canvas id="categoriaChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -264,17 +244,16 @@
 @push('scripts')
 <script>
 // Gráfica de ventas por día
-const ventasData = @json($ventasPorDia);
-const ctxVentas = document.getElementById('ventasChart').getContext('2d');
-new Chart(ctxVentas, {
+const ventasCtx = document.getElementById('ventasChart').getContext('2d');
+new Chart(ventasCtx, {
     type: 'line',
     data: {
-        labels: ventasData.map(v => new Date(v.fecha).toLocaleDateString('es-ES', {day: '2-digit', month: 'short'})),
+        labels: @json($ventasPorDia->pluck('fecha')->map(fn($f) => date('d/m', strtotime($f)))),
         datasets: [{
             label: 'Ingresos',
-            data: ventasData.map(v => v.ingresos),
-            borderColor: '#ff6b6b',
-            backgroundColor: 'rgba(255, 107, 107, 0.1)',
+            data: @json($ventasPorDia->pluck('ingresos')),
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
             tension: 0.4,
             fill: true
         }]
@@ -289,39 +268,57 @@ new Chart(ctxVentas, {
             y: {
                 beginAtZero: true,
                 ticks: {
-                    callback: function(value) {
-                        return '$' + value.toLocaleString();
-                    }
+                    callback: value => '$' + value.toLocaleString()
                 }
             }
         }
     }
 });
 
-// Gráfica de distribución por estado
+// Gráfica de estados
 const estadosData = @json($distribucionEstados);
-const ctxEstados = document.getElementById('estadosChart').getContext('2d');
-new Chart(ctxEstados, {
+const estadosCtx = document.getElementById('estadosChart').getContext('2d');
+new Chart(estadosCtx, {
     type: 'doughnut',
     data: {
         labels: estadosData.map(e => e.estado.charAt(0).toUpperCase() + e.estado.slice(1)),
         datasets: [{
             data: estadosData.map(e => e.total),
-            backgroundColor: [
-                '#ffc107', // pendiente
-                '#0dcaf0', // procesando
-                '#0d6efd', // enviado
-                '#198754', // entregado
-                '#dc3545'  // cancelado
-            ]
+            backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6c757d']
         }]
     },
     options: {
         responsive: true,
-        maintainAspectRatio: false,
+        maintainAspectRatio: true,
         plugins: {
-            legend: {
-                position: 'bottom'
+            legend: { position: 'bottom' }
+        }
+    }
+});
+
+// CORREGIDO: Gráfica de categorías con nombres
+const categoriaData = @json($ventasPorCategoria ?? collect());
+const categoriaCtx = document.getElementById('categoriaChart').getContext('2d');
+new Chart(categoriaCtx, {
+    type: 'doughnut',
+    data: {
+        labels: categoriaData.map(c => c.nombre || 'Sin categoría'),
+        datasets: [{
+            data: categoriaData.map(c => c.total_ingresos),
+            backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#0dcaf0']
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': $' + context.parsed.toLocaleString();
+                    }
+                }
             }
         }
     }
