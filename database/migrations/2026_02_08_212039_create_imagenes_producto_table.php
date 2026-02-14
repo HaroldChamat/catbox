@@ -13,7 +13,10 @@ return new class extends Migration
     {
         Schema::create('imagenes_producto', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('producto_id')->constrained('productos')->onDelete('cascade');
+            $table->foreignId('producto_id')
+                  ->constrained('productos')
+                  ->onDelete('cascade')    // ← Esto está BIEN - cuando se borra un producto, sí queremos borrar sus imágenes
+                  ->onUpdate('cascade');
             $table->string('ruta', 500);
             $table->integer('orden')->default(0);
             $table->boolean('es_principal')->default(false);
