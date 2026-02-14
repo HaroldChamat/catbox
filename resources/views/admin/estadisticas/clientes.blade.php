@@ -33,7 +33,19 @@
                 <li><a class="nav-link" href="{{ route('admin.productos.index') }}"><i class="bi bi-box-seam me-2"></i>Productos</a></li>
                 <li><a class="nav-link" href="{{ route('admin.categorias.index') }}"><i class="bi bi-tag me-2"></i>Categorías</a></li>
                 <li><a class="nav-link" href="{{ route('admin.ordenes.index') }}"><i class="bi bi-receipt me-2"></i>Órdenes</a></li>
-                <li><a class="nav-link active" href="{{ route('admin.estadisticas.clientes') }}"><i class="bi bi-graph-up me-2"></i>Estadísticas</a></li>
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="collapse" href="#estadisticasMenu">
+                        <i class="bi bi-graph-up me-2"></i>Estadísticas <i class="bi bi-chevron-down float-end"></i>
+                    </a>
+                    <div class="collapse show" id="estadisticasMenu">
+                        <ul class="nav flex-column ms-3">
+                            <li><a class="nav-link small" href="{{ route('admin.estadisticas.index') }}">Dashboard</a></li>
+                            <li><a class="nav-link small" href="{{ route('admin.estadisticas.ventas') }}">Ventas</a></li>
+                            <li><a class="nav-link small" href="{{ route('admin.estadisticas.productos') }}">Productos</a></li>
+                            <li><a class="nav-link active small" href="{{ route('admin.estadisticas.clientes') }}">Clientes</a></li>
+                        </ul>
+                    </div>
+                </li>
             </ul>
         </div>
 

@@ -123,40 +123,48 @@ class EstadisticaController extends Controller
     // Análisis de clientes
     public function clientes(Request $request)
     {
-        $periodo = $request->get('periodo', '30');
-        $limite = $request->get('limite', 20);
-        $fechaDesde = $request->get('fecha_desde', now()->subDays($periodo)->format('Y-m-d'));
-        $fechaHasta = $request->get('fecha_hasta', now()->format('Y-m-d'));
-        
-        $topClientes = User::where('is_admin', false)
-            ->withSum(['ordenes' => fn($q) => $q->whereIn('estado', ['procesando', 'enviado', 'entregado'])
-                ->whereBetween('created_at', [$fechaDesde, $fechaHasta])], 'total')
-            ->withCount(['ordenes' => fn($q) => $q->whereBetween('created_at', [$fechaDesde, $fechaHasta])])
-            ->having('ordenes_sum_total', '>', 0)
-            ->orderByDesc('ordenes_sum_total')
-            ->limit($limite)
-            ->get();
-        
-        $nuevosClientes = User::where('is_admin', false)
-            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])
-            ->withCount('ordenes')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-        
-        $statsClientes = [
-            'total' => User::where('is_admin', false)->count(),
-            'nuevos_periodo' => User::where('is_admin', false)
-                ->whereBetween('created_at', [$fechaDesde, $fechaHasta])->count(),
-            'con_compras' => User::where('is_admin', false)
-                ->whereHas('ordenes', fn($q) => $q->whereBetween('created_at', [$fechaDesde, $fechaHasta]))->count(),
-            'ticket_promedio' => Orden::whereIn('estado', ['procesando', 'enviado', 'entregado'])
-                ->whereBetween('created_at', [$fechaDesde, $fechaHasta])->avg('total'),
-        ];
-        
-        return view('admin.estadisticas.clientes', compact(
-            'topClientes', 'nuevosClientes', 'statsClientes', 'periodo', 'limite', 'fechaDesde', 'fechaHasta'
-        ));
+    $periodo = $request->get('periodo', '30');
+    $limite = $request->get('limite', 20);
+    $fechaDesde = $request->get('fecha_desde', now()->subDays($periodo)->format('Y-m-d'));
+    $fechaHasta = $request->get('fecha_hasta', now()->format('Y-m-d'));
+    
+    // Top clientes con mapeo correcto de variables
+    $topClientes = User::where('is_admin', false)
+        ->withSum(['ordenes' => fn($q) => $q->whereIn('estado', ['procesando', 'enviado', 'entregado'])
+            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])], 'total')
+        ->withCount(['ordenes' => fn($q) => $q->whereBetween('created_at', [$fechaDesde, $fechaHasta])])
+        ->having('ordenes_sum_total', '>', 0)
+        ->orderByDesc('ordenes_sum_total')
+        ->limit($limite)
+        ->get()
+        ->map(function($cliente) {
+            // Mapear a nombres de variables que la vista espera
+            $cliente->total_gastado = $cliente->ordenes_sum_total ?? 0;
+            $cliente->total_ordenes = $cliente->ordenes_count ?? 0;
+            return $cliente;
+        });
+    
+    $clientesNuevos = User::where('is_admin', false)
+        ->whereBetween('created_at', [$fechaDesde, $fechaHasta])
+        ->withCount('ordenes')
+        ->orderBy('created_at', 'desc')
+        ->limit(10)
+        ->get();
+    
+    // Esta variable estaba faltando y era la causa del error
+    $clientesStats = [
+        'total_clientes' => User::where('is_admin', false)->count(),
+        'clientes_nuevos' => User::where('is_admin', false)
+            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])->count(),
+        'clientes_activos' => User::where('is_admin', false)
+            ->whereHas('ordenes', fn($q) => $q->whereBetween('created_at', [$fechaDesde, $fechaHasta]))->count(),
+        'ticket_promedio' => Orden::whereIn('estado', ['procesando', 'enviado', 'entregado'])
+            ->whereBetween('created_at', [$fechaDesde, $fechaHasta])->avg('total') ?? 0,
+    ];
+    
+    return view('admin.estadisticas.clientes', compact(
+        'topClientes', 'clientesNuevos', 'clientesStats', 'periodo', 'limite', 'fechaDesde', 'fechaHasta'
+    ));
     }
 
     public function ventasRealTime()
