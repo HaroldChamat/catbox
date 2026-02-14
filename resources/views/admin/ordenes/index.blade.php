@@ -202,7 +202,7 @@
                                             <ul class="dropdown-menu">
                                                 <li><h6 class="dropdown-header">Cambiar estado</h6></li>
                                                 <li>
-                                                    <form method="POST" action="{{ route('admin.ordenes.updateEstado', $orden->id) }}">
+                                                    <form method="POST" action="{{ route('admin.ordenes.updateestado', $orden->id) }}">
                                                         @csrf
                                                         @method('PUT')
                                                         <input type="hidden" name="estado" value="procesando">
@@ -212,7 +212,7 @@
                                                     </form>
                                                 </li>
                                                 <li>
-                                                    <form method="POST" action="{{ route('admin.ordenes.updateEstado', $orden->id) }}">
+                                                    <form method="POST" action="{{ route('admin.ordenes.updateestado', $orden->id) }}">
                                                         @csrf
                                                         @method('PUT')
                                                         <input type="hidden" name="estado" value="enviado">
@@ -222,7 +222,7 @@
                                                     </form>
                                                 </li>
                                                 <li>
-                                                    <form method="POST" action="{{ route('admin.ordenes.updateEstado', $orden->id) }}">
+                                                    <form method="POST" action="{{ route('admin.ordenes.updateestado', $orden->id) }}">
                                                         @csrf
                                                         @method('PUT')
                                                         <input type="hidden" name="estado" value="entregado">

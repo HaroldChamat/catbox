@@ -107,7 +107,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::prefix('ordenes')->name('ordenes.')->group(function () {
         Route::get('/', [OrdenAdminController::class, 'index'])->name('index');
         Route::get('/{id}', [OrdenAdminController::class, 'show'])->name('show');
-        Route::post('/{id}/estado', [OrdenAdminController::class, 'cambiarEstado'])->name('cambiar-estado');
+        Route::put('/{id}/estado', [OrdenAdminController::class, 'updateEstado'])->name('updateestado');
+        Route::delete('/{id}', [OrdenAdminController::class, 'destroy'])->name('destroy');
     });
 
     // Estadísticas
