@@ -13,9 +13,13 @@ return new class extends Migration
     {
         Schema::create('productos', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('categoria_id')->constrained('categorias_producto')->onDelete('cascade');
+            $table->foreignId('categoria_id')
+                  ->constrained('categorias_producto')
+                  ->onDelete('restrict')  // ← CAMBIADO de cascade a restrict
+                  ->onUpdate('cascade');
             $table->string('nombre', 255);
             $table->text('descripcion')->nullable();
+            $table->string('slug', 255)->nullable();  // ← AGREGADO: columna slug
             $table->decimal('precio', 10, 2);
             $table->integer('stock')->default(0);
             $table->boolean('activo')->default(true);
@@ -24,6 +28,7 @@ return new class extends Migration
             // Índices
             $table->index('categoria_id');
             $table->index('activo');
+            $table->index('slug');  // ← AGREGADO: índice para slug
         });
     }
 

@@ -59,10 +59,16 @@ class OrdenController extends Controller
         $request->validate([
             'direccion_id' => 'nullable|exists:direcciones_entrega,id',
             'notas' => 'nullable|string|max:500',
+        ], [
+            'notas.max' => 'Las notas no pueden exceder 500 caracteres',
         ]);
         
-        // Verificar que la dirección pertenece al usuario
-        if ($request->direccion_id) {
+        // Preparar datos para actualizar
+        $datosActualizar = [];
+        
+        // Solo actualizar dirección si se envió en el request
+        if ($request->has('direccion_id') && $request->filled('direccion_id')) {
+            // Verificar que la dirección pertenece al usuario
             $direccion = \App\Models\DireccionEntrega::where('id', $request->direccion_id)
                 ->where('user_id', Auth::id())
                 ->first();
@@ -70,14 +76,27 @@ class OrdenController extends Controller
             if (!$direccion) {
                 return back()->with('error', 'Dirección no válida');
             }
+            
+            $datosActualizar['direccion_id'] = $request->direccion_id;
         }
         
-        $orden->update([
-            'direccion_id' => $request->direccion_id,
-            'notas' => $request->notas,
-        ]);
+        // Solo actualizar notas si se envió en el request (puede ser vacío)
+        if ($request->has('notas')) {
+            $datosActualizar['notas'] = $request->notas;
+        }
         
-        return back()->with('success', 'Información actualizada correctamente');
+        // Actualizar solo si hay datos
+        if (!empty($datosActualizar)) {
+            try {
+                $orden->update($datosActualizar);
+                return back()->with('success', 'Información actualizada correctamente');
+            } catch (\Exception $e) {
+                \Log::error('Error al actualizar orden: ' . $e->getMessage());
+                return back()->with('error', 'Ocurrió un error al actualizar la información. Por favor, intenta de nuevo.');
+            }
+        }
+        
+        return back()->with('info', 'No se realizaron cambios');
     }
     
     /**
@@ -110,46 +129,56 @@ class OrdenController extends Controller
             'paypal_email.required_if' => 'El email de PayPal es obligatorio',
         ]);
         
-        // Limpiar número de tarjeta (quitar espacios)
-        $numeroTarjeta = $request->metodo_pago === 'tarjeta' 
-            ? str_replace(' ', '', $request->numero_tarjeta) 
-            : null;
-        
-        // Preparar datos de pago
-        $datosPago = [
-            'metodo' => $request->metodo_pago,
-        ];
-        
-        if ($request->metodo_pago === 'tarjeta') {
-            $datosPago['ultimos_digitos'] = substr($numeroTarjeta, -4);
-            $datosPago['nombre_titular'] = $request->nombre_titular;
-        } else {
-            $datosPago['paypal_email'] = $request->paypal_email;
+        try {
+            DB::beginTransaction();
+            
+            // Limpiar número de tarjeta (quitar espacios)
+            $numeroTarjeta = $request->metodo_pago === 'tarjeta' 
+                ? str_replace(' ', '', $request->numero_tarjeta) 
+                : null;
+            
+            // Preparar datos de pago
+            $datosPago = [
+                'metodo' => $request->metodo_pago,
+            ];
+            
+            if ($request->metodo_pago === 'tarjeta') {
+                $datosPago['ultimos_digitos'] = substr($numeroTarjeta, -4);
+                $datosPago['nombre_titular'] = $request->nombre_titular;
+            } else {
+                $datosPago['paypal_email'] = $request->paypal_email;
+            }
+            
+            // Actualizar o crear pago
+            if ($orden->pago) {
+                $orden->pago->update([
+                    'metodo_pago' => $request->metodo_pago,
+                    'estado' => 'completado',
+                    'monto' => $orden->total,
+                    'datos_pago' => $datosPago,
+                ]);
+            } else {
+                Pago::create([
+                    'orden_id' => $orden->id,
+                    'metodo_pago' => $request->metodo_pago,
+                    'monto' => $orden->total,
+                    'estado' => 'completado',
+                    'transaction_id' => 'TXN-' . strtoupper(uniqid()),
+                    'datos_pago' => $datosPago,
+                ]);
+            }
+            
+            // Cambiar estado de la orden a procesando
+            $orden->update(['estado' => 'procesando']);
+            
+            DB::commit();
+            
+            return back()->with('success', '¡Pago completado exitosamente! Tu orden está siendo procesada');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error al completar pago: ' . $e->getMessage());
+            return back()->with('error', 'Ocurrió un error al procesar el pago. Por favor, intenta de nuevo.');
         }
-        
-        // Actualizar o crear pago
-        if ($orden->pago) {
-            $orden->pago->update([
-                'metodo_pago' => $request->metodo_pago,
-                'estado' => 'completado',
-                'monto' => $orden->total,
-                'datos_pago' => $datosPago,
-            ]);
-        } else {
-            Pago::create([
-                'orden_id' => $orden->id,
-                'metodo_pago' => $request->metodo_pago,
-                'monto' => $orden->total,
-                'estado' => 'completado',
-                'transaction_id' => 'TXN-' . strtoupper(uniqid()),
-                'datos_pago' => $datosPago,
-            ]);
-        }
-        
-        // Cambiar estado de la orden a procesando
-        $orden->update(['estado' => 'procesando']);
-        
-        return back()->with('success', '¡Pago completado exitosamente! Tu orden está siendo procesada');
     }
     
     /**
@@ -164,19 +193,30 @@ class OrdenController extends Controller
             return back()->with('error', 'No puedes cancelar una orden que ya fue enviada');
         }
         
-        // Devolver stock a los productos
-        foreach ($orden->detalles as $detalle) {
-            $detalle->producto->increment('stock', $detalle->cantidad);
+        try {
+            DB::beginTransaction();
+            
+            // Devolver stock a los productos
+            foreach ($orden->detalles as $detalle) {
+                $detalle->producto->increment('stock', $detalle->cantidad);
+            }
+            
+            // Actualizar estado
+            $orden->update(['estado' => 'cancelado']);
+            
+            if ($orden->pago) {
+                $orden->pago->update(['estado' => 'reembolsado']);
+            }
+            
+            DB::commit();
+            
+            return redirect()->route('ordenes.index')
+                ->with('success', 'Orden cancelada correctamente. El stock ha sido devuelto.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error al cancelar orden: ' . $e->getMessage());
+            return back()->with('error', 'Ocurrió un error al cancelar la orden. Por favor, intenta de nuevo.');
         }
-        
-        // Actualizar estado
-        $orden->update(['estado' => 'cancelado']);
-        
-        if ($orden->pago) {
-            $orden->pago->update(['estado' => 'reembolsado']);
-        }
-        
-        return redirect()->route('ordenes.index')->with('success', 'Orden cancelada correctamente. El stock ha sido devuelto.');
     }
 
     /**
@@ -225,6 +265,7 @@ class OrdenController extends Controller
                 'estado' => 'pendiente',
                 'fecha_entrega_estimada' => now()->addDays(5),
                 'direccion_id' => $request->direccion_id,
+                'notas' => null, // Inicializar como null
             ]);
 
             // Crear detalles de la orden
@@ -264,7 +305,8 @@ class OrdenController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Error al procesar la orden: ' . $e->getMessage());
+            \Log::error('Error al procesar orden: ' . $e->getMessage());
+            return back()->with('error', 'Error al procesar la orden. Por favor, intenta de nuevo.');
         }
     }
 

@@ -24,19 +24,19 @@ class ProductoSeeder extends Seeder
             [
                 'nombre' => 'Nendoroid Naruto Uzumaki',
                 'descripcion' => 'Figura Nendoroid de Naruto Uzumaki con múltiples expresiones y accesorios',
-                'precio' => 65.99,
+                'precio' => 200,
                 'stock' => 15,
             ],
             [
                 'nombre' => 'Nendoroid Goku',
                 'descripcion' => 'Figura Nendoroid de Goku con efectos especiales de ki y poses intercambiables',
-                'precio' => 69.99,
+                'precio' => 400,
                 'stock' => 12,
             ],
             [
                 'nombre' => 'Nendoroid Hatsune Miku',
                 'descripcion' => 'Figura Nendoroid de Hatsune Miku con micrófono y efectos de luz',
-                'precio' => 59.99,
+                'precio' => 600,
                 'stock' => 20,
             ],
         ];
@@ -61,19 +61,19 @@ class ProductoSeeder extends Seeder
             [
                 'nombre' => 'Photocard BTS Jungkook',
                 'descripcion' => 'Photocard oficial de Jungkook - BTS Map of the Soul',
-                'precio' => 12.99,
+                'precio' => 1000,
                 'stock' => 30,
             ],
             [
                 'nombre' => 'Photocard BLACKPINK Jennie',
                 'descripcion' => 'Photocard oficial de Jennie - BLACKPINK Born Pink',
-                'precio' => 14.99,
+                'precio' => 1000,
                 'stock' => 25,
             ],
             [
                 'nombre' => 'Photocard Stray Kids Felix',
                 'descripcion' => 'Photocard oficial de Felix - Stray Kids 5-STAR',
-                'precio' => 11.99,
+                'precio' => 2000,
                 'stock' => 35,
             ],
         ];
@@ -97,25 +97,25 @@ class ProductoSeeder extends Seeder
             [
                 'nombre' => 'Llavero Naruto Shippuden',
                 'descripcion' => 'Llavero acrílico de Naruto Shippuden con diseño de doble cara',
-                'precio' => 5.99,
+                'precio' => 600,
                 'stock' => 50,
             ],
             [
                 'nombre' => 'Llavero Attack on Titan',
                 'descripcion' => 'Llavero metálico de la insignia del Cuerpo de Exploración',
-                'precio' => 7.99,
+                'precio' => 800,
                 'stock' => 40,
             ],
             [
                 'nombre' => 'Llavero Demon Slayer',
                 'descripcion' => 'Llavero acrílico de Tanjiro Kamado con espada',
-                'precio' => 6.99,
+                'precio' => 600,
                 'stock' => 45,
             ],
             [
                 'nombre' => 'Llavero My Hero Academia',
                 'descripcion' => 'Llavero acrílico de Deku (Izuku Midoriya)',
-                'precio' => 5.99,
+                'precio' => 500,
                 'stock' => 55,
             ],
         ];

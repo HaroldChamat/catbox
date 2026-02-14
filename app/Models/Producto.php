@@ -15,6 +15,7 @@ class Producto extends Model
         'categoria_id',
         'nombre',
         'descripcion',
+        'slug',  // ← Agregado
         'precio',
         'stock',
         'activo',
@@ -23,8 +24,11 @@ class Producto extends Model
     protected $casts = [
         'precio' => 'decimal:2',
         'activo' => 'boolean',
+        'stock' => 'integer',
     ];
 
+    // SIN BOOT METHOD - Sin eventos que puedan interferir
+    
     /**
      * Relación: Un producto pertenece a una categoría
      */

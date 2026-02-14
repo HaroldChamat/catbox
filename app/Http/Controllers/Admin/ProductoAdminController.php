@@ -9,32 +9,33 @@ use App\Models\ImagenProducto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ProductoAdminController extends Controller
 {
+    /**
+     * Mostrar lista de productos
+     */
     public function index(Request $request)
     {
-        // Categorías para los filtros
         $categorias = CategoriaProducto::orderBy('nombre')->get();
         
         $query = Producto::with(['categoria', 'imagenPrincipal']);
 
-        // Filtro por nombre
+        // Filtros
         if ($request->filled('nombre')) {
             $query->where('nombre', 'like', '%' . $request->nombre . '%');
         }
 
-        // Filtro por categoría
         if ($request->filled('categoria_id')) {
             $query->where('categoria_id', $request->categoria_id);
         }
 
-        // Filtro por estado
         if ($request->filled('activo')) {
             $query->where('activo', $request->activo);
         }
 
-        // Filtro por stock bajo
         if ($request->filled('stock_bajo')) {
             $query->where('stock', '<', 10);
         }
@@ -44,12 +45,18 @@ class ProductoAdminController extends Controller
         return view('admin.productos.index', compact('productos', 'categorias'));
     }
 
+    /**
+     * Mostrar formulario de creación
+     */
     public function crear()
     {
         $categorias = CategoriaProducto::all();
         return view('admin.productos.form', compact('categorias'));
     }
 
+    /**
+     * Guardar nuevo producto
+     */
     public function guardar(Request $request)
     {
         $request->validate([
@@ -63,44 +70,63 @@ class ProductoAdminController extends Controller
             'imagenes.*'   => 'image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        $producto = Producto::create([
-            'nombre'       => $request->nombre,
-            'descripcion'  => $request->descripcion,
-            'precio'       => $request->precio,
-            'stock'        => $request->stock,
-            'categoria_id' => $request->categoria_id,
-            'activo'       => $request->boolean('activo', true),
-            'slug'         => Str::slug($request->nombre) . '-' . time(),
-        ]);
+        try {
+            // Crear producto
+            $producto = new Producto();
+            $producto->nombre = $request->nombre;
+            $producto->descripcion = $request->descripcion;
+            $producto->precio = $request->precio;
+            $producto->stock = $request->stock;
+            $producto->categoria_id = $request->categoria_id;
+            $producto->activo = $request->has('activo') ? 1 : 0;
+            $producto->slug = Str::slug($request->nombre) . '-' . time();
+            $producto->save();
 
-        // Guardar imágenes
-        if ($request->hasFile('imagenes')) {
-            foreach ($request->file('imagenes') as $index => $imagen) {
-                $ruta = $imagen->store('productos', 'public');
+            // Guardar imágenes
+            if ($request->hasFile('imagenes')) {
+                foreach ($request->file('imagenes') as $index => $imagen) {
+                    $ruta = $imagen->store('productos', 'public');
 
-                ImagenProducto::create([
-                    'producto_id'  => $producto->id,
-                    'ruta'         => $ruta,
-                    'es_principal' => $index === 0, // primera imagen = principal
-                ]);
+                    $img = new ImagenProducto();
+                    $img->producto_id = $producto->id;
+                    $img->ruta = $ruta;
+                    $img->es_principal = ($index === 0);
+                    $img->save();
+                }
             }
-        }
 
-        return redirect()->route('admin.productos.index')
-            ->with('success', "Producto \"{$producto->nombre}\" creado correctamente.");
+            return redirect()->route('admin.productos.index')
+                ->with('success', "Producto \"{$producto->nombre}\" creado correctamente.");
+                
+        } catch (\Exception $e) {
+            Log::error('Error al crear producto: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Error al crear el producto: ' . $e->getMessage());
+        }
     }
 
+    /**
+     * Mostrar formulario de edición
+     */
     public function editar($id)
     {
-        $producto   = Producto::with(['imagenes', 'categoria'])->findOrFail($id);
+        $producto = Producto::with(['imagenes', 'categoria'])->findOrFail($id);
         $categorias = CategoriaProducto::all();
         return view('admin.productos.form', compact('producto', 'categorias'));
     }
 
+    /**
+     * Actualizar producto - CON LOGGING EXTREMO
+     */
     public function actualizar(Request $request, $id)
     {
-        $producto = Producto::findOrFail($id);
-
+        Log::info('═══════════════════════════════════════════════════════');
+        Log::info('🟢 INICIO DE actualizar() - Producto ID: ' . $id);
+        Log::info('Método HTTP recibido: ' . $request->method());
+        Log::info('Ruta actual: ' . $request->path());
+        Log::info('Todos los datos del request:', $request->all());
+        Log::info('═══════════════════════════════════════════════════════');
+        
+        // Validar datos
         $validated = $request->validate([
             'nombre'       => 'required|string|max:255',
             'descripcion'  => 'nullable|string',
@@ -111,78 +137,176 @@ class ProductoAdminController extends Controller
             'imagenes.*'   => 'image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        // Actualizar solo los campos del formulario
-        $producto->update([
-            'nombre'       => $validated['nombre'],
-            'descripcion'  => $validated['descripcion'],
-            'precio'       => $validated['precio'],
-            'stock'        => $validated['stock'],
-            'categoria_id' => $validated['categoria_id'],
-            'activo'       => $request->has('activo') ? true : false,
-        ]);
+        Log::info('✅ Validación exitosa', ['datos' => $validated]);
 
-        // Agregar nuevas imágenes si existen
-        if ($request->hasFile('imagenes')) {
-            $tienePrincipal = $producto->imagenes()->where('es_principal', true)->exists();
+        try {
+            // Verificar que el producto existe ANTES
+            Log::info('🔍 Buscando producto ANTES de actualizar...');
+            $productoAntes = DB::table('productos')->where('id', $id)->first();
+            
+            if (!$productoAntes) {
+                Log::error('❌ Producto NO EXISTE antes de actualizar');
+                throw new \Exception('Producto no encontrado');
+            }
+            
+            Log::info('✅ Producto existe ANTES:', [
+                'id' => $productoAntes->id,
+                'nombre' => $productoAntes->nombre,
+                'categoria_id' => $productoAntes->categoria_id
+            ]);
 
-            foreach ($request->file('imagenes') as $index => $imagen) {
-                try {
+            // Actualizar usando query builder RAW
+            Log::info('🔄 Ejecutando UPDATE con Query Builder...');
+            
+            $affected = DB::table('productos')
+                ->where('id', $id)
+                ->update([
+                    'nombre' => $validated['nombre'],
+                    'descripcion' => $validated['descripcion'],
+                    'precio' => $validated['precio'],
+                    'stock' => $validated['stock'],
+                    'categoria_id' => $validated['categoria_id'],
+                    'activo' => $request->has('activo') ? 1 : 0,
+                    'updated_at' => now(),
+                ]);
+
+            Log::info('✅ UPDATE ejecutado', ['filas_afectadas' => $affected]);
+
+            // Verificar que el producto EXISTE después del update
+            Log::info('🔍 Verificando producto DESPUÉS de actualizar...');
+            $productoDespues = DB::table('productos')->where('id', $id)->first();
+            
+            if (!$productoDespues) {
+                Log::error('🚨 ¡PRODUCTO DESAPARECIÓ DESPUÉS DEL UPDATE!');
+                Log::error('Esto significa que algo LO BORRÓ durante o después del UPDATE');
+                throw new \Exception('El producto fue eliminado inesperadamente');
+            }
+            
+            Log::info('✅ Producto SIGUE EXISTIENDO después del UPDATE:', [
+                'id' => $productoDespues->id,
+                'nombre' => $productoDespues->nombre,
+                'categoria_id' => $productoDespues->categoria_id
+            ]);
+
+            // Agregar nuevas imágenes si existen
+            if ($request->hasFile('imagenes')) {
+                Log::info('📸 Procesando imágenes nuevas...');
+                
+                $tienePrincipal = ImagenProducto::where('producto_id', $id)
+                    ->where('es_principal', true)
+                    ->exists();
+
+                foreach ($request->file('imagenes') as $index => $imagen) {
                     $ruta = $imagen->store('productos', 'public');
 
-                    ImagenProducto::create([
-                        'producto_id'  => $producto->id,
-                        'ruta'         => $ruta,
-                        'es_principal' => !$tienePrincipal && $index === 0,
-                    ]);
+                    $img = new ImagenProducto();
+                    $img->producto_id = $id;
+                    $img->ruta = $ruta;
+                    $img->es_principal = (!$tienePrincipal && $index === 0);
+                    $img->save();
 
-                    // Después de agregar la primera imagen, ya hay principal
                     if ($index === 0 && !$tienePrincipal) {
                         $tienePrincipal = true;
                     }
-                } catch (\Exception $e) {
-                    // Log del error pero continuar con las demás imágenes
-                    \Log::error('Error al guardar imagen: ' . $e->getMessage());
                 }
+                
+                Log::info('✅ Imágenes guardadas correctamente');
             }
-        }
 
-        return redirect()->route('admin.productos.index')
-            ->with('success', "Producto \"{$producto->nombre}\" actualizado correctamente.");
+            // Verificación FINAL antes de redirigir
+            Log::info('🔍 Verificación FINAL antes de redirigir...');
+            $productoFinal = DB::table('productos')->where('id', $id)->first();
+            
+            if (!$productoFinal) {
+                Log::error('🚨 ¡PRODUCTO DESAPARECIÓ ANTES DE REDIRIGIR!');
+                Log::error('Se borró DESPUÉS de guardar las imágenes');
+                throw new \Exception('El producto fue eliminado inesperadamente');
+            }
+            
+            Log::info('✅ Producto existe en verificación final');
+            Log::info('🟢 FIN DE actualizar() - TODO CORRECTO');
+            Log::info('═══════════════════════════════════════════════════════');
+
+            return redirect()->route('admin.productos.index')
+                ->with('success', "Producto \"{$productoDespues->nombre}\" actualizado correctamente.");
+                
+        } catch (\Exception $e) {
+            Log::error('❌ ERROR EN actualizar():', [
+                'producto_id' => $id,
+                'mensaje' => $e->getMessage(),
+                'linea' => $e->getLine(),
+                'archivo' => $e->getFile(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()->withInput()
+                ->with('error', 'Error al actualizar: ' . $e->getMessage());
+        }
     }
 
+    /**
+     * Eliminar producto
+     */
     public function eliminar($id)
     {
-        $producto = Producto::with('imagenes')->findOrFail($id);
+        Log::info('🗑️ MÉTODO eliminar() llamado para producto ID: ' . $id);
+        
+        try {
+            $producto = Producto::with('imagenes')->findOrFail($id);
 
-        // Eliminar imágenes del storage
-        foreach ($producto->imagenes as $imagen) {
-            Storage::disk('public')->delete($imagen->ruta);
+            // Eliminar imágenes del storage
+            foreach ($producto->imagenes as $imagen) {
+                Storage::disk('public')->delete($imagen->ruta);
+            }
+
+            $nombre = $producto->nombre;
+            
+            // Eliminar usando query builder RAW
+            DB::table('imagenes_producto')->where('producto_id', $id)->delete();
+            DB::table('productos')->where('id', $id)->delete();
+            
+            Log::info('✅ Producto eliminado correctamente desde método eliminar()');
+
+            return redirect()->route('admin.productos.index')
+                ->with('success', "Producto \"{$nombre}\" eliminado correctamente.");
+                
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar producto: ' . $e->getMessage());
+            return back()->with('error', 'Error al eliminar el producto: ' . $e->getMessage());
         }
-
-        $nombre = $producto->nombre;
-        $producto->delete();
-
-        return redirect()->route('admin.productos.index')
-            ->with('success', "Producto \"{$nombre}\" eliminado.");
     }
 
+    /**
+     * Eliminar imagen de producto
+     */
     public function eliminarImagen($id, $imgId)
     {
-        $imagen = ImagenProducto::where('producto_id', $id)->findOrFail($imgId);
+        try {
+            $imagen = ImagenProducto::where('producto_id', $id)->findOrFail($imgId);
 
-        Storage::disk('public')->delete($imagen->ruta);
+            // Eliminar archivo
+            Storage::disk('public')->delete($imagen->ruta);
 
-        $eraPrincipal = $imagen->es_principal;
-        $imagen->delete();
+            $eraPrincipal = $imagen->es_principal;
+            
+            // Eliminar usando query builder
+            DB::table('imagenes_producto')->where('id', $imgId)->delete();
 
-        // Si era la principal, asignar otra
-        if ($eraPrincipal) {
-            $otra = ImagenProducto::where('producto_id', $id)->first();
-            if ($otra) {
-                $otra->update(['es_principal' => true]);
+            // Si era la principal, asignar otra
+            if ($eraPrincipal) {
+                $otra = ImagenProducto::where('producto_id', $id)->first();
+                if ($otra) {
+                    DB::table('imagenes_producto')
+                        ->where('id', $otra->id)
+                        ->update(['es_principal' => true]);
+                }
             }
-        }
 
-        return back()->with('success', 'Imagen eliminada.');
+            return back()->with('success', 'Imagen eliminada correctamente.');
+            
+        } catch (\Exception $e) {
+            Log::error('Error al eliminar imagen: ' . $e->getMessage());
+            return back()->with('error', 'Error al eliminar la imagen.');
+        }
     }
 }
