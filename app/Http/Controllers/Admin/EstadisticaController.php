@@ -33,9 +33,13 @@ class EstadisticaController extends Controller
         $ventasPorDia = $this->getVentasPorDia($fechaDesde, $fechaHasta, $categoriaId);
         $distribucionEstados = $this->getDistribucionEstados($fechaDesde, $fechaHasta);
         
+        // CORREGIDO: Asegurar que ventasPorCategoria siempre esté disponible
+        $ventasPorCategoria = $this->getVentasPorCategoria($fechaDesde, $fechaHasta);
+        
         return view('admin.estadisticas.index', compact(
             'categorias', 'stats', 'comparison', 'topProductos', 
-            'ventasPorDia', 'distribucionEstados', 'periodo', 'categoriaId', 'fechaDesde', 'fechaHasta'
+            'ventasPorDia', 'distribucionEstados', 'ventasPorCategoria',
+            'periodo', 'categoriaId', 'fechaDesde', 'fechaHasta'
         ));
     }
     
@@ -50,6 +54,7 @@ class EstadisticaController extends Controller
         
         $categorias = CategoriaProducto::all();
         
+        // Determinar qué datos cargar según el agrupamiento
         switch ($agrupar) {
             case 'hora':
                 $ventasData = $this->getVentasPorHora($fechaDesde, $fechaHasta, $categoriaId);
@@ -72,6 +77,7 @@ class EstadisticaController extends Controller
             'total_ordenes' => $stats['total_ordenes'],
         ];
         
+        // Siempre cargar estos datos para los gráficos de resumen
         $ventasPorCategoria = $this->getVentasPorCategoria($fechaDesde, $fechaHasta);
         $ventasPorHora = $this->getVentasPorHora($fechaDesde, $fechaHasta, $categoriaId);
         $ventasPorDia = $this->getVentasPorDia($fechaDesde, $fechaHasta, $categoriaId);
@@ -124,6 +130,8 @@ class EstadisticaController extends Controller
         $periodo = $request->get('periodo', '30');
         $limite = $request->get('limite', 20);
         $ordenar = $request->get('ordenar', 'mayor_gasto');
+        $tipoCliente = $request->get('tipo_cliente', 'todos'); // NUEVO
+        $soloActivos = $request->get('solo_activos', false); // NUEVO
         $fechaDesde = $request->get('fecha_desde', now()->subDays($periodo)->format('Y-m-d'));
         $fechaHasta = $request->get('fecha_hasta', now()->format('Y-m-d'));
         
@@ -133,6 +141,18 @@ class EstadisticaController extends Controller
                 ->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'])], 'total')
             ->withCount(['ordenes' => fn($q) => $q->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'])])
             ->having('ordenes_sum_total', '>', 0);
+        
+        // NUEVO: Filtro por tipo de cliente (nuevos/antiguos)
+        if ($tipoCliente === 'nuevos') {
+            $query->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59']);
+        } elseif ($tipoCliente === 'antiguos') {
+            $query->where('created_at', '<', $fechaDesde . ' 00:00:00');
+        }
+        
+        // NUEVO: Filtro solo activos (que hayan comprado en el período)
+        if ($soloActivos) {
+            $query->whereHas('ordenes', fn($q) => $q->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59']));
+        }
         
         // Aplicar ordenamiento
         switch ($ordenar) {
@@ -157,9 +177,11 @@ class EstadisticaController extends Controller
                 return $cliente;
             });
         
+        // MEJORADO: Clientes nuevos priorizando activos
         $clientesNuevos = User::where('is_admin', false)
             ->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'])
-            ->withCount('ordenes')
+            ->withCount(['ordenes' => fn($q) => $q->whereBetween('created_at', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'])])
+            ->orderByDesc('ordenes_count') // Primero los que tienen órdenes
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
@@ -175,7 +197,8 @@ class EstadisticaController extends Controller
         ];
         
         return view('admin.estadisticas.clientes', compact(
-            'topClientes', 'clientesNuevos', 'clientesStats', 'periodo', 'limite', 'ordenar', 'fechaDesde', 'fechaHasta'
+            'topClientes', 'clientesNuevos', 'clientesStats', 
+            'periodo', 'limite', 'ordenar', 'tipoCliente', 'soloActivos', 'fechaDesde', 'fechaHasta'
         ));
     }
 
@@ -263,14 +286,20 @@ class EstadisticaController extends Controller
         $fechaDesdeCompleta = $fechaDesde . ' 00:00:00';
         $fechaHastaCompleta = $fechaHasta . ' 23:59:59';
         
-        return Orden::select(
+        $query = Orden::select(
                 DB::raw('DATE(created_at) as fecha'),
                 DB::raw('COUNT(*) as ordenes'),
                 DB::raw('SUM(total) as ingresos')
             )
             ->whereIn('estado', ['procesando', 'enviado', 'entregado'])
-            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta])
-            ->groupBy('fecha')
+            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta]);
+        
+        // Si hay filtro de categoría, filtrar por productos de esa categoría
+        if ($categoriaId) {
+            $query->whereHas('detalles.producto', fn($q) => $q->where('categoria_id', $categoriaId));
+        }
+        
+        return $query->groupBy('fecha')
             ->orderBy('fecha', 'asc')
             ->get();
     }
@@ -280,14 +309,20 @@ class EstadisticaController extends Controller
         $fechaDesdeCompleta = $fechaDesde . ' 00:00:00';
         $fechaHastaCompleta = $fechaHasta . ' 23:59:59';
         
-        return Orden::select(
+        $query = Orden::select(
                 DB::raw('HOUR(created_at) as hora'),
                 DB::raw('COUNT(*) as ordenes'),
                 DB::raw('SUM(total) as ingresos')
             )
             ->whereIn('estado', ['procesando', 'enviado', 'entregado'])
-            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta])
-            ->groupBy('hora')
+            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta]);
+        
+        // Si hay filtro de categoría, filtrar por productos de esa categoría
+        if ($categoriaId) {
+            $query->whereHas('detalles.producto', fn($q) => $q->where('categoria_id', $categoriaId));
+        }
+        
+        return $query->groupBy('hora')
             ->orderBy('hora', 'asc')
             ->get();
     }
@@ -336,15 +371,15 @@ class EstadisticaController extends Controller
         $fechaHastaCompleta = $fechaHasta . ' 23:59:59';
         
         $query = DetalleOrden::select(
-                'producto_id',
-                DB::raw('SUM(cantidad) as total_vendido'),
-                DB::raw('SUM(subtotal) as total_ingresos'),
-                DB::raw('COUNT(DISTINCT orden_id) as num_ordenes')
+                'detalles_orden.producto_id',
+                DB::raw('SUM(detalles_orden.cantidad) as total_vendido'),
+                DB::raw('SUM(detalles_orden.subtotal) as total_ingresos'),
+                DB::raw('COUNT(DISTINCT detalles_orden.orden_id) as num_ordenes')
             )
             ->with(['producto.imagenPrincipal', 'producto.categoria'])
-            ->whereBetween('created_at', [$fechaDesdeCompleta, $fechaHastaCompleta])
+            ->whereBetween('detalles_orden.created_at', [$fechaDesdeCompleta, $fechaHastaCompleta]) // ESPECIFICAR TABLA
             ->when($categoriaId, fn($q) => $q->whereHas('producto', fn($q2) => $q2->where('categoria_id', $categoriaId)))
-            ->groupBy('producto_id');
+            ->groupBy('detalles_orden.producto_id');
         
         switch ($ordenar) {
             case 'mas_ingresos':
@@ -354,6 +389,7 @@ class EstadisticaController extends Controller
                 $query->orderByDesc('num_ordenes');
                 break;
             case 'precio_mayor':
+                // CORREGIDO: Especificar tabla en el WHERE
                 $query->join('productos', 'detalles_orden.producto_id', '=', 'productos.id')
                     ->orderByDesc('productos.precio')
                     ->select('detalles_orden.producto_id', 
@@ -362,6 +398,7 @@ class EstadisticaController extends Controller
                             DB::raw('COUNT(DISTINCT detalles_orden.orden_id) as num_ordenes'));
                 break;
             case 'precio_menor':
+                // CORREGIDO: Especificar tabla en el WHERE
                 $query->join('productos', 'detalles_orden.producto_id', '=', 'productos.id')
                     ->orderBy('productos.precio')
                     ->select('detalles_orden.producto_id', 

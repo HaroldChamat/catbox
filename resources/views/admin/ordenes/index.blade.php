@@ -20,12 +20,13 @@
         color: white;
         background: rgba(233,69,96,.3);
     }
-    .stats-card {
-        border-left: 4px solid;
-        transition: transform .2s;
+    .badge-estado {
+        min-width: 90px;
+        padding: 6px 12px;
     }
-    .stats-card:hover {
-        transform: translateX(5px);
+    .filtro-activo {
+        background: #e7f3ff;
+        border-left: 3px solid #0d6efd;
     }
 </style>
 @endpush
@@ -42,177 +43,226 @@
                 <li><a class="nav-link" href="{{ route('admin.productos.index') }}"><i class="bi bi-box-seam me-2"></i>Productos</a></li>
                 <li><a class="nav-link" href="{{ route('admin.categorias.index') }}"><i class="bi bi-tag me-2"></i>Categorías</a></li>
                 <li><a class="nav-link active" href="{{ route('admin.ordenes.index') }}"><i class="bi bi-receipt me-2"></i>Órdenes</a></li>
-                <li><a class="nav-link" href="{{ route('admin.estadisticas.index') }}"><i class="bi bi-graph-up me-2"></i>Estadísticas</a></li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="collapse" href="#estadisticasMenu">
+                        <i class="bi bi-graph-up me-2"></i>Estadísticas <i class="bi bi-chevron-down float-end"></i>
+                    </a>
+                    <div class="collapse" id="estadisticasMenu">
+                        <ul class="nav flex-column ms-3">
+                            <li><a class="nav-link small" href="{{ route('admin.estadisticas.index') }}">Dashboard</a></li>
+                            <li><a class="nav-link small" href="{{ route('admin.estadisticas.ventas') }}">Ventas</a></li>
+                            <li><a class="nav-link small" href="{{ route('admin.estadisticas.productos') }}">Productos</a></li>
+                            <li><a class="nav-link small" href="{{ route('admin.estadisticas.clientes') }}">Clientes</a></li>
+                        </ul>
+                    </div>
+                </li>
             </ul>
         </div>
 
         {{-- Contenido --}}
         <div class="col-lg-10 py-4 px-4">
 
-            <h3 class="fw-800 mb-4">Gestión de Órdenes</h3>
-
-            {{-- Estadísticas rápidas --}}
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="card stats-card shadow-sm" style="border-left-color: #0d6efd">
-                        <div class="card-body">
-                            <small class="text-muted d-block">Total Órdenes</small>
-                            <h3 class="fw-800 mb-0">{{ $stats['total_ordenes'] }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card stats-card shadow-sm" style="border-left-color: #ffc107">
-                        <div class="card-body">
-                            <small class="text-muted d-block">Pendientes</small>
-                            <h3 class="fw-800 mb-0">{{ $stats['ordenes_pendientes'] }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card stats-card shadow-sm" style="border-left-color: #198754">
-                        <div class="card-body">
-                            <small class="text-muted d-block">Completadas</small>
-                            <h3 class="fw-800 mb-0">{{ $stats['ordenes_completadas'] }}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card stats-card shadow-sm" style="border-left-color: #dc3545">
-                        <div class="card-body">
-                            <small class="text-muted d-block">Total Ventas</small>
-                            <h3 class="fw-800 mb-0">${{ number_format($stats['total_ventas'], 0, ',', '.') }}</h3>
-                        </div>
-                    </div>
+            {{-- Header --}}
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="fw-800 mb-1">Gestión de Órdenes</h3>
+                    @if($usuarioFiltrado)
+                    <small class="text-primary">
+                        <i class="bi bi-person-fill"></i> Filtrando por: <strong>{{ $usuarioFiltrado->name }}</strong>
+                        <a href="{{ route('admin.ordenes.index') }}" class="btn btn-sm btn-outline-secondary ms-2">
+                            <i class="bi bi-x"></i> Quitar filtro
+                        </a>
+                    </small>
+                    @else
+                    <small class="text-muted">Administración de todas las órdenes</small>
+                    @endif
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-lg-9">
-                    {{-- Filtros --}}
-                    <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-body">
-                            <form method="GET">
-                                <div class="row g-3">
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-600">Usuario</label>
-                                        <select name="usuario_id" class="form-select">
-                                            <option value="">Todos los usuarios</option>
-                                            @foreach($usuarios as $user)
-                                            <option value="{{ $user->id }}" {{ request('usuario_id') == $user->id ? 'selected' : '' }}>
-                                                {{ $user->name }}
-                                            </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-600">Estado</label>
-                                        <select name="estado" class="form-select">
-                                            <option value="">Todos</option>
-                                            <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente</option>
-                                            <option value="procesando" {{ request('estado') == 'procesando' ? 'selected' : '' }}>Procesando</option>
-                                            <option value="enviado" {{ request('estado') == 'enviado' ? 'selected' : '' }}>Enviado</option>
-                                            <option value="entregado" {{ request('estado') == 'entregado' ? 'selected' : '' }}>Entregado</option>
-                                            <option value="cancelado" {{ request('estado') == 'cancelado' ? 'selected' : '' }}>Cancelado</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small fw-600">Desde</label>
-                                        <input type="date" name="fecha_desde" class="form-control" value="{{ request('fecha_desde') }}">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small fw-600">Hasta</label>
-                                        <input type="date" name="fecha_hasta" class="form-control" value="{{ request('fecha_hasta') }}">
-                                    </div>
-                                    <div class="col-md-2 d-flex align-items-end">
-                                        <button type="submit" class="btn btn-primary w-100">
-                                            <i class="bi bi-search"></i> Filtrar
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    {{-- Lista de órdenes --}}
-                    <div class="card border-0 shadow-sm">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>N° Orden</th>
-                                        <th>Cliente</th>
-                                        <th>Fecha</th>
-                                        <th>Total</th>
-                                        <th>Estado</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($ordenes as $orden)
-                                    <tr>
-                                        <td class="fw-600">{{ $orden->numero_orden }}</td>
-                                        <td>{{ $orden->user->name }}</td>
-                                        <td>{{ $orden->created_at->format('d/m/Y H:i') }}</td>
-                                        <td class="fw-700 text-danger">${{ number_format($orden->total, 0, ',', '.') }}</td>
-                                        <td>
-                                            <form action="{{ route('admin.ordenes.cambiar-estado', $orden->id) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                <select name="estado" class="form-select form-select-sm" onchange="this.form.submit()" style="width:auto">
-                                                    <option value="pendiente" {{ $orden->estado == 'pendiente' ? 'selected' : '' }}>Pendiente</option>
-                                                    <option value="procesando" {{ $orden->estado == 'procesando' ? 'selected' : '' }}>Procesando</option>
-                                                    <option value="enviado" {{ $orden->estado == 'enviado' ? 'selected' : '' }}>Enviado</option>
-                                                    <option value="entregado" {{ $orden->estado == 'entregado' ? 'selected' : '' }}>Entregado</option>
-                                                    <option value="cancelado" {{ $orden->estado == 'cancelado' ? 'selected' : '' }}>Cancelado</option>
-                                                </select>
-                                            </form>
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('admin.ordenes.show', $orden->id) }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center py-4 text-muted">No hay órdenes</td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                        @if($ordenes->hasPages())
-                        <div class="card-footer bg-white">
-                            {{ $ordenes->appends(request()->query())->links() }}
-                        </div>
+            {{-- Filtros activos --}}
+            @if($usuarioFiltrado || $fechaDesde || $fechaHasta)
+            <div class="alert alert-info filtro-activo mb-4" role="alert">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-funnel-fill me-2"></i>
+                        <strong>Filtros activos:</strong>
+                        @if($usuarioFiltrado)
+                        <span class="badge bg-primary ms-2">Cliente: {{ $usuarioFiltrado->name }}</span>
+                        @endif
+                        @if($fechaDesde)
+                        <span class="badge bg-info ms-2">Desde: {{ \Carbon\Carbon::parse($fechaDesde)->format('d/m/Y') }}</span>
+                        @endif
+                        @if($fechaHasta)
+                        <span class="badge bg-info ms-2">Hasta: {{ \Carbon\Carbon::parse($fechaHasta)->format('d/m/Y') }}</span>
                         @endif
                     </div>
+                    <a href="{{ route('admin.ordenes.index') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-x-circle"></i> Limpiar filtros
+                    </a>
                 </div>
+            </div>
+            @endif
 
-                {{-- Usuarios más recurrentes --}}
-                <div class="col-lg-3">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-white">
-                            <h6 class="fw-700 mb-0"><i class="bi bi-trophy text-warning me-2"></i>Top Clientes</h6>
+            {{-- Filtros --}}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3 align-items-end">
+                        @if($usuarioFiltrado)
+                        <input type="hidden" name="usuario" value="{{ $usuarioFiltrado->id }}">
+                        @endif
+                        
+                        <div class="col-md-3">
+                            <label class="form-label small fw-600">Estado</label>
+                            <select name="estado" class="form-select">
+                                <option value="">Todos los estados</option>
+                                <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente</option>
+                                <option value="procesando" {{ request('estado') == 'procesando' ? 'selected' : '' }}>Procesando</option>
+                                <option value="enviado" {{ request('estado') == 'enviado' ? 'selected' : '' }}>Enviado</option>
+                                <option value="entregado" {{ request('estado') == 'entregado' ? 'selected' : '' }}>Entregado</option>
+                                <option value="cancelado" {{ request('estado') == 'cancelado' ? 'selected' : '' }}>Cancelado</option>
+                            </select>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="list-group list-group-flush">
-                                @foreach($usuariosRecurrentes as $usuario)
-                                <a href="{{ route('admin.ordenes.index', ['usuario_id' => $usuario->id]) }}" 
-                                   class="list-group-item list-group-item-action">
-                                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-600">Desde</label>
+                            <input type="date" name="desde" class="form-control" value="{{ $fechaDesde ?? '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-600">Hasta</label>
+                            <input type="date" name="hasta" class="form-control" value="{{ $fechaHasta ?? '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {{-- Lista de órdenes --}}
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="8%">ID</th>
+                                    <th width="20%">Cliente</th>
+                                    <th class="text-center">Fecha</th>
+                                    <th class="text-center">Estado</th>
+                                    <th class="text-center">Items</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-center" width="15%">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($ordenes as $orden)
+                                <tr>
+                                    <td class="align-middle fw-600">#{{ $orden->id }}</td>
+                                    <td class="align-middle">
                                         <div>
-                                            <div class="fw-600 small">{{ Str::limit($usuario->name, 20) }}</div>
-                                            <small class="text-muted">{{ $usuario->ordenes_count }} órdenes</small>
+                                            <div class="fw-600">{{ $orden->user->name }}</div>
+                                            <small class="text-muted">{{ $orden->user->email }}</small>
                                         </div>
-                                        <span class="badge bg-primary rounded-pill">{{ $usuario->ordenes_count }}</span>
-                                    </div>
-                                </a>
-                                @endforeach
-                            </div>
-                        </div>
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        <small>{{ $orden->created_at->format('d/m/Y H:i') }}</small>
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        @php
+                                            $estadoClases = [
+                                                'pendiente' => 'bg-warning',
+                                                'procesando' => 'bg-info',
+                                                'enviado' => 'bg-primary',
+                                                'entregado' => 'bg-success',
+                                                'cancelado' => 'bg-danger'
+                                            ];
+                                            $clase = $estadoClases[$orden->estado] ?? 'bg-secondary';
+                                        @endphp
+                                        <span class="badge badge-estado {{ $clase }}">
+                                            {{ ucfirst($orden->estado) }}
+                                        </span>
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        <span class="badge bg-light text-dark">{{ $orden->detalles->count() }}</span>
+                                    </td>
+                                    <td class="align-middle text-end fw-700 text-success">
+                                        ${{ number_format($orden->total, 0, ',', '.') }}
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ route('admin.ordenes.show', $orden->id) }}" 
+                                               class="btn btn-outline-primary" title="Ver detalles">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" 
+                                                    data-bs-toggle="dropdown">
+                                                <span class="visually-hidden">Opciones</span>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li><h6 class="dropdown-header">Cambiar estado</h6></li>
+                                                <li>
+                                                    <form method="POST" action="{{ route('admin.ordenes.updateEstado', $orden->id) }}">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <input type="hidden" name="estado" value="procesando">
+                                                        <button type="submit" class="dropdown-item">
+                                                            <i class="bi bi-clock text-info"></i> Procesando
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li>
+                                                    <form method="POST" action="{{ route('admin.ordenes.updateEstado', $orden->id) }}">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <input type="hidden" name="estado" value="enviado">
+                                                        <button type="submit" class="dropdown-item">
+                                                            <i class="bi bi-truck text-primary"></i> Enviado
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li>
+                                                    <form method="POST" action="{{ route('admin.ordenes.updateEstado', $orden->id) }}">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <input type="hidden" name="estado" value="entregado">
+                                                        <button type="submit" class="dropdown-item">
+                                                            <i class="bi bi-check-circle text-success"></i> Entregado
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <form method="POST" action="{{ route('admin.ordenes.destroy', $orden->id) }}"
+                                                          onsubmit="return confirm('¿Estás seguro de eliminar esta orden?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            <i class="bi bi-trash"></i> Eliminar
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-5">
+                                        <i class="bi bi-inbox display-4 d-block mb-3"></i>
+                                        <p class="mb-0">No hay órdenes{{ $usuarioFiltrado ? ' para este cliente' : '' }}</p>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+                @if($ordenes->hasPages())
+                <div class="card-footer bg-white border-0">
+                    {{ $ordenes->links() }}
+                </div>
+                @endif
             </div>
 
         </div>
