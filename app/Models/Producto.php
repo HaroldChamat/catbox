@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 
 class Producto extends Model
 {
@@ -16,10 +15,10 @@ class Producto extends Model
         'categoria_id',
         'nombre',
         'descripcion',
+        'slug',  // ← Agregado
         'precio',
         'stock',
         'activo',
-        'slug',
     ];
 
     protected $casts = [
@@ -28,31 +27,8 @@ class Producto extends Model
         'stock' => 'integer',
     ];
 
-    /**
-     * Boot del modelo con logging para detectar eliminaciones
-     */
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Log cuando se intente eliminar un producto
-        static::deleting(function ($producto) {
-            Log::warning('ALERTA: Intentando eliminar producto', [
-                'id' => $producto->id,
-                'nombre' => $producto->nombre,
-                'backtrace' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5)
-            ]);
-        });
-
-        // Log cuando se actualice un producto
-        static::updating(function ($producto) {
-            Log::info('Actualizando producto', [
-                'id' => $producto->id,
-                'cambios' => $producto->getDirty()
-            ]);
-        });
-    }
-
+    // SIN BOOT METHOD - Sin eventos que puedan interferir
+    
     /**
      * Relación: Un producto pertenece a una categoría
      */

@@ -90,7 +90,7 @@
             </div>
 
             <form action="{{ isset($producto) ? route('admin.productos.actualizar', $producto->id) : route('admin.productos.guardar') }}"
-                  method="POST" enctype="multipart/form-data">
+                  method="POST" enctype="multipart/form-data" id="formProducto">
                 @csrf
                 @if(isset($producto)) @method('PUT') @endif
 
@@ -140,14 +140,13 @@
                                             @if($img->es_principal)
                                                 <span class="position-absolute bottom-0 start-0 m-1 badge bg-success" style="font-size:.6rem">Principal</span>
                                             @endif
-                                            <form action="{{ route('admin.productos.eliminar-imagen', [$producto->id, $img->id]) }}"
-                                                  method="POST" class="d-inline"
-                                                  onsubmit="return confirm('¿Eliminar esta imagen?')">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn-del-img" title="Eliminar imagen">
-                                                    <i class="bi bi-x"></i>
-                                                </button>
-                                            </form>
+                                            {{-- BOTÓN DE ELIMINAR SIN FORM ANIDADO --}}
+                                            <button type="button" 
+                                                    class="btn-del-img" 
+                                                    title="Eliminar imagen"
+                                                    onclick="eliminarImagen({{ $producto->id }}, {{ $img->id }})">
+                                                <i class="bi bi-x"></i>
+                                            </button>
                                         </div>
                                         @endforeach
                                     </div>
@@ -256,6 +255,12 @@
         </div>
     </div>
 </div>
+
+{{-- FORMULARIO OCULTO PARA ELIMINAR IMÁGENES --}}
+<form id="formEliminarImagen" method="POST" style="display:none;">
+    @csrf
+    @method('DELETE')
+</form>
 @endsection
 
 @push('scripts')
@@ -291,5 +296,16 @@
         input.files = e.dataTransfer.files;
         previewImages(input);
     });
+
+    // Función para eliminar imagen SIN form anidado
+    function eliminarImagen(productoId, imagenId) {
+        if (!confirm('¿Eliminar esta imagen?')) {
+            return;
+        }
+
+        const form = document.getElementById('formEliminarImagen');
+        form.action = `/admin/productos/${productoId}/imagen/${imagenId}`;
+        form.submit();
+    }
 </script>
 @endpush

@@ -21,19 +21,22 @@ return new class extends Migration
         $tableInfo = DB::select("SHOW CREATE TABLE productos");
         \Log::info('Configuración actual de tabla productos:', (array)$tableInfo);
         
-        // Verificar restricciones de llave foránea
+        // Verificar restricciones de llave foránea - CORREGIDO
         $foreignKeys = DB::select("
             SELECT 
-                CONSTRAINT_NAME,
-                COLUMN_NAME,
-                REFERENCED_TABLE_NAME,
-                REFERENCED_COLUMN_NAME,
-                DELETE_RULE,
-                UPDATE_RULE
-            FROM information_schema.KEY_COLUMN_USAGE
-            JOIN information_schema.REFERENTIAL_CONSTRAINTS USING (CONSTRAINT_NAME)
-            WHERE TABLE_NAME = 'productos'
-            AND TABLE_SCHEMA = DATABASE()
+                kcu.CONSTRAINT_NAME,
+                kcu.COLUMN_NAME,
+                kcu.REFERENCED_TABLE_NAME,
+                kcu.REFERENCED_COLUMN_NAME,
+                rc.DELETE_RULE,
+                rc.UPDATE_RULE
+            FROM information_schema.KEY_COLUMN_USAGE kcu
+            JOIN information_schema.REFERENTIAL_CONSTRAINTS rc 
+                ON kcu.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+                AND kcu.TABLE_SCHEMA = rc.CONSTRAINT_SCHEMA
+            WHERE kcu.TABLE_NAME = 'productos'
+            AND kcu.TABLE_SCHEMA = DATABASE()
+            AND kcu.REFERENCED_TABLE_NAME IS NOT NULL
         ");
         
         \Log::info('Llaves foráneas de productos:', (array)$foreignKeys);
