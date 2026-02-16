@@ -46,6 +46,23 @@
         padding: 25px;
         border-radius: 12px;
     }
+    .comentarios-container {
+    scrollbar-width: thin;
+}
+.comentarios-container::-webkit-scrollbar {
+    width: 6px;
+}
+.comentarios-container::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+.comentario-item {
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 </style>
 @endpush
 
@@ -281,6 +298,94 @@
                     @endif
                 </div>
             </div>
+            {{-- Comentarios / Chat --}}
+            <div class="card info-card shadow-sm mb-4">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                    <h6 class="fw-700 mb-0">
+                        <i class="bi bi-chat-dots text-danger me-2"></i>
+                        Mensajes
+                        @if($orden->comentariosNoLeidosPara(false) > 0)
+                        <span class="badge bg-danger">{{ $orden->comentariosNoLeidosPara(false) }}</span>
+                        @endif
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {{-- Lista de comentarios --}}
+                    <div class="comentarios-container mb-3" style="max-height: 400px; overflow-y: auto;">
+                        @forelse($orden->comentarios as $comentario)
+                        <div class="comentario-item mb-3 {{ $comentario->es_admin ? 'text-end' : '' }}">
+                            <div class="d-inline-block {{ $comentario->es_admin ? 'bg-primary bg-opacity-10 border-primary' : 'bg-light' }} rounded p-3" 
+                                style="max-width: 75%; border-left: 3px solid;">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    @if($comentario->es_admin)
+                                    <i class="bi bi-shield-check text-primary"></i>
+                                    @else
+                                    <i class="bi bi-person-circle text-secondary"></i>
+                                    @endif
+                                    <strong class="small">{{ $comentario->nombreAutor }}</strong>
+                                    <span class="text-muted small">{{ $comentario->created_at->diffForHumans() }}</span>
+                                    @if(!$comentario->leido && !$comentario->es_admin)
+                                    <span class="badge bg-danger badge-sm">Nuevo</span>
+                                    @endif
+                                </div>
+                                <p class="mb-0">{{ $comentario->comentario }}</p>
+                            </div>
+                        </div>
+                        @empty
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-chat-square-dots display-6"></i>
+                            <p class="mb-0 mt-2">No hay mensajes aún</p>
+                            <small>Escribe el primero para comunicarte con soporte</small>
+                        </div>
+                        @endforelse
+                    </div>
+
+                    {{-- Formulario para nuevo comentario --}}
+                    <form action="{{ route('ordenes.comentarios.guardar', $orden->id) }}" method="POST">
+                        @csrf
+                        <div class="input-group">
+                            <textarea class="form-control @error('comentario') is-invalid @enderror" 
+                                    name="comentario" 
+                                    rows="2" 
+                                    placeholder="Escribe tu mensaje..."
+                                    required></textarea>
+                            <button class="btn btn-primary" type="submit">
+                                <i class="bi bi-send-fill"></i> Enviar
+                            </button>
+                        </div>
+                        @error('comentario')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
+                    </form>
+                </div>
+            </div>
+
+            @push('scripts')
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Scroll automático al final de los comentarios
+                const container = document.querySelector('.comentarios-container');
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
+
+                // Marcar como leídos al cargar la página
+                fetch("{{ route('ordenes.comentarios.marcar-leidos', $orden->id) }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                // Auto-refresh cada 30 segundos (opcional)
+                setInterval(() => {
+                    // Recargar solo la sección de comentarios
+                    location.reload();
+                }, 30000);
+            });
+            </script>
+            @endpush
 
             {{-- Cancelar orden --}}
             @if(in_array($orden->estado, ['pendiente', 'procesando']))

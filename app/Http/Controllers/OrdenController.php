@@ -34,7 +34,7 @@ class OrdenController extends Controller
      */
     public function show($id)
     {
-        $orden = Orden::with(['detalles.producto.imagenPrincipal', 'pago', 'user', 'direccion'])
+        $orden = Orden::with(['detalles.producto.imagenPrincipal', 'pago', 'user', 'direccion', 'comentarios.user'])
             ->where('user_id', Auth::id())
             ->findOrFail($id);
         
