@@ -45,7 +45,7 @@ class OrdenAdminController extends Controller
 
     public function show($id)
     {
-        $orden = Orden::with(['user', 'detalles.producto.imagenPrincipal'])->findOrFail($id);
+        $orden = Orden::with(['user', 'detalles.producto.imagenPrincipal', 'comentarios.user'])->findOrFail($id);
         return view('admin.ordenes.show', compact('orden'));
     }
 

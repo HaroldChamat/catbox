@@ -27,6 +27,23 @@
         border-radius: 8px;
         margin-bottom: 20px;
     }
+    .comentarios-container {
+    scrollbar-width: thin;
+}
+.comentarios-container::-webkit-scrollbar {
+    width: 6px;
+}
+.comentarios-container::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+.comentario-item {
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 </style>
 @endpush
 
@@ -209,7 +226,90 @@
                     @endif
                 </div>
             </div>
+            {{-- Comentarios / Chat con el cliente --}}
+            <div class="col-lg-12 mt-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-700 mb-0">
+                            <i class="bi bi-chat-dots text-danger me-2"></i>
+                            Mensajes con el cliente
+                            @if($orden->comentariosNoLeidosPara(true) > 0)
+                            <span class="badge bg-danger">{{ $orden->comentariosNoLeidosPara(true) }} nuevos</span>
+                            @endif
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {{-- Lista de comentarios --}}
+                        <div class="comentarios-container mb-3" style="max-height: 400px; overflow-y: auto;">
+                            @forelse($orden->comentarios as $comentario)
+                            <div class="comentario-item mb-3 {{ $comentario->es_admin ? 'text-end' : '' }}">
+                                <div class="d-inline-block {{ $comentario->es_admin ? 'bg-primary bg-opacity-10 border-primary' : 'bg-light' }} rounded p-3" 
+                                    style="max-width: 75%; border-left: 3px solid;">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        @if($comentario->es_admin)
+                                        <i class="bi bi-shield-check text-primary"></i>
+                                        <strong class="small">Admin - {{ $comentario->user->name }}</strong>
+                                        @else
+                                        <i class="bi bi-person-circle text-secondary"></i>
+                                        <strong class="small">Cliente - {{ $comentario->user->name }}</strong>
+                                        @endif
+                                        <span class="text-muted small">{{ $comentario->created_at->diffForHumans() }}</span>
+                                        @if(!$comentario->leido && $comentario->es_admin == false)
+                                        <span class="badge bg-danger badge-sm">Nuevo</span>
+                                        @endif
+                                    </div>
+                                    <p class="mb-0">{{ $comentario->comentario }}</p>
+                                </div>
+                            </div>
+                            @empty
+                            <div class="text-center text-muted py-3">
+                                <i class="bi bi-chat-square-dots display-6"></i>
+                                <p class="mb-0 mt-2">No hay mensajes aún</p>
+                            </div>
+                            @endforelse
+                        </div>
 
+                        {{-- Formulario para nuevo comentario --}}
+                        <form action="{{ route('admin.ordenes.comentarios.guardar', $orden->id) }}" method="POST">
+                            @csrf
+                            <div class="input-group">
+                                <textarea class="form-control @error('comentario') is-invalid @enderror" 
+                                        name="comentario" 
+                                        rows="2" 
+                                        placeholder="Escribe una respuesta al cliente..."
+                                        required></textarea>
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="bi bi-send-fill"></i> Enviar
+                                </button>
+                            </div>
+                            @error('comentario')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            @push('scripts')
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Scroll automático al final
+                const container = document.querySelector('.comentarios-container');
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
+
+                // Marcar como leídos
+                fetch("{{ route('admin.ordenes.comentarios.marcar-leidos', $orden->id) }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                    }
+                });
+            });
+            </script>
+            @endpush
         </div>
     </div>
 </div>

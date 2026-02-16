@@ -11,7 +11,7 @@ use App\Http\Controllers\Admin\CategoriaAdminController;
 use App\Http\Controllers\Admin\OrdenAdminController;
 use App\Http\Controllers\Admin\EstadisticaController;
 use App\Http\Controllers\DireccionController;
-
+use App\Http\Controllers\ComentarioOrdenController;
 
 // ─────────────────────────────────────────────
 // RUTAS PÚBLICAS
@@ -72,7 +72,13 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/{id}/completar-pago', [OrdenController::class, 'completarPago'])->name('completar-pago');
     Route::delete('/{id}/cancelar', [OrdenController::class, 'cancelar'])->name('cancelar');
     });
+    // Comentarios de órdenes (usuario)
+    Route::prefix('ordenes/{ordenId}/comentarios')->name('ordenes.comentarios.')->group(function () {
+        Route::post('/', [ComentarioOrdenController::class, 'guardar'])->name('guardar');
+        Route::post('/marcar-leidos', [ComentarioOrdenController::class, 'marcarComoLeidos'])->name('marcar-leidos');
+    });
 });
+
 
 // ─────────────────────────────────────────────
 // RUTAS ADMINISTRADOR
@@ -136,4 +142,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         ]
     ]);
     })->name('debug.producto');
+
+    // Comentarios de órdenes (admin)
+    Route::prefix('ordenes/{ordenId}/comentarios')->name('ordenes.comentarios.')->group(function () {
+        Route::post('/', [ComentarioOrdenController::class, 'guardar'])->name('guardar');
+        Route::post('/marcar-leidos', [ComentarioOrdenController::class, 'marcarComoLeidos'])->name('marcar-leidos');
+    });
 });

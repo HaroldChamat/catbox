@@ -88,4 +88,23 @@ class Orden extends Model
     {
         return in_array($this->estado, ['pendiente', 'procesando']);
     }
+
+    /**
+    * Relación: Una orden tiene muchos comentarios
+    */
+    public function comentarios()
+    {
+        return $this->hasMany(ComentarioOrden::class, 'orden_id')->orderBy('created_at', 'asc');
+    }
+
+    /**
+     * Obtener comentarios no leídos para el usuario actual
+     */
+    public function comentariosNoLeidosPara($esAdmin = false)
+    {
+        return $this->comentarios()
+            ->where('leido', false)
+            ->where('es_admin', '!=', $esAdmin)
+            ->count();
+    }
 }
