@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Producto;
 use App\Models\CategoriaProducto;
 use Illuminate\Http\Request;
+use App\Models\Orden;
+use App\Models\Resena;
 
 class ProductoController extends Controller
 {
@@ -105,18 +107,38 @@ class ProductoController extends Controller
         return view('productos.categoria-generica', compact('categoria', 'productos'));
     }
 
+   
     public function show($id)
     {
-        $producto = Producto::with(['categoria', 'imagenes'])
+        $producto = Producto::with(['categoria', 'imagenes', 'resenasAprobadas.user'])
             ->where('activo', true)
             ->findOrFail($id);
+
         $relacionados = Producto::where('categoria_id', $producto->categoria_id)
             ->where('id', '!=', $producto->id)
             ->where('activo', true)
             ->with(['imagenPrincipal'])
             ->limit(4)
             ->get();
-        return view('productos.show', compact('producto', 'relacionados'));
+
+        $esFavorito = false;
+        $puedeResenaear = false;
+        $yaReseno = false;
+
+        if (auth()->check()) {
+            $esFavorito = $producto->esFavoritoDeUsuario(auth()->id());
+
+            $puedeResenaear = \App\Models\Orden::where('user_id', auth()->id())
+                ->whereIn('estado', ['entregado', 'completado'])
+                ->whereHas('detalles', fn($q) => $q->where('producto_id', $id))
+                ->exists();
+
+            $yaReseno = \App\Models\Resena::where('user_id', auth()->id())
+                ->where('producto_id', $id)
+                ->exists();
+        }
+
+        return view('productos.show', compact('producto', 'relacionados', 'esFavorito', 'puedeResenaear', 'yaReseno'));
     }
 
     public function buscar(Request $request)

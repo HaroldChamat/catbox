@@ -12,6 +12,9 @@ use App\Http\Controllers\Admin\OrdenAdminController;
 use App\Http\Controllers\Admin\EstadisticaController;
 use App\Http\Controllers\DireccionController;
 use App\Http\Controllers\ComentarioOrdenController;
+use App\Http\Controllers\FavoritoController;
+use App\Http\Controllers\ResenaController;
+use App\Http\Controllers\Admin\ResenaAdminController;
 
 // ─────────────────────────────────────────────
 // RUTAS PÚBLICAS
@@ -77,6 +80,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/', [ComentarioOrdenController::class, 'guardar'])->name('guardar');
         Route::post('/marcar-leidos', [ComentarioOrdenController::class, 'marcarComoLeidos'])->name('marcar-leidos');
     });
+    // Favoritos
+    Route::get('/favoritos', [FavoritoController::class, 'index'])->name('favoritos.index');
+    Route::post('/favoritos/{productoId}/toggle', [FavoritoController::class, 'toggle'])->name('favoritos.toggle');
+
+    // Reseñas
+    Route::post('/productos/{productoId}/resenas', [ResenaController::class, 'guardar'])->name('resenas.guardar');
+    Route::put('/productos/{productoId}/resenas', [ResenaController::class, 'editar'])->name('resenas.editar');
 });
 
 
@@ -147,5 +157,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::prefix('ordenes/{ordenId}/comentarios')->name('ordenes.comentarios.')->group(function () {
         Route::post('/', [ComentarioOrdenController::class, 'guardar'])->name('guardar');
         Route::post('/marcar-leidos', [ComentarioOrdenController::class, 'marcarComoLeidos'])->name('marcar-leidos');
+    });
+    // Moderación de reseñas
+    Route::prefix('resenas')->name('resenas.')->group(function () {
+        Route::get('/', [ResenaAdminController::class, 'index'])->name('index');
+        Route::post('/{id}/aprobar', [ResenaAdminController::class, 'aprobar'])->name('aprobar');
+        Route::post('/{id}/rechazar', [ResenaAdminController::class, 'rechazar'])->name('rechazar');
+        Route::delete('/{id}', [ResenaAdminController::class, 'destruir'])->name('destruir');
     });
 });

@@ -71,6 +71,15 @@
                             <i class="bi bi-shop"></i> Tienda
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('admin.resenas.index') }}">
+                            <i class="bi bi-star-half"></i> Reseñas
+                            @php $pendientesCount = \App\Models\Resena::where('estado', 'pendiente')->count(); @endphp
+                            @if($pendientesCount > 0)
+                                <span class="badge bg-danger">{{ $pendientesCount }}</span>
+                            @endif
+                        </a>
+                    </li>
                 </ul>
                 <ul class="navbar-nav align-items-lg-center gap-2">
                     {{-- Botón Panel de Control --}}
@@ -157,6 +166,7 @@
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ route('home') }}"><i class="bi bi-person"></i> Mi cuenta</a></li>
                             <li><a class="dropdown-item" href="{{ route('ordenes.index') }}"><i class="bi bi-bag"></i> Mis órdenes</a></li>
+                            <li><a class="dropdown-item" href="{{ route('favoritos.index') }}"><i class="bi bi-heart-fill text-danger"></i> Mis favoritos</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item text-danger" href="{{ route('logout') }}"

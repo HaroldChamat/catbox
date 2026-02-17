@@ -76,4 +76,29 @@ class Producto extends Model
     {
         return $this->hasMany(Estadistica::class, 'producto_id');
     }
+
+    public function favoritos()
+    {
+        return $this->hasMany(Favorito::class);
+    }
+
+    public function resenas()
+    {
+        return $this->hasMany(Resena::class);
+    }
+
+    public function resenasAprobadas()
+    {
+        return $this->hasMany(Resena::class)->where('estado', 'aprobada');
+    }
+
+    public function promedioCalificacion()
+    {
+        return $this->resenasAprobadas()->avg('calificacion') ?? 0;
+    }
+
+    public function esFavoritoDeUsuario($userId)
+    {
+        return $this->favoritos()->where('user_id', $userId)->exists();
+    }
 }
