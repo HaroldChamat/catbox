@@ -8,6 +8,8 @@ use App\Models\Pago;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\Cupon;
+use App\Models\CuponUso;
 
 class OrdenController extends Controller
 {
@@ -231,11 +233,29 @@ class OrdenController extends Controller
                 ->with('error', 'Tu carrito está vacío');
         }
 
-        $items = $carrito->items()->with(['producto.imagenPrincipal'])->get();
+        $items = $carrito->items()->with(['producto.imagenPrincipal', 'producto.categoria'])->get();
         $total = $carrito->calcularTotal();
         $direcciones = Auth::user()->direcciones;
+
+        // Calcular descuento si hay cupón en sesión
+        $descuento = 0;
+        $cuponAplicado = null;
+
+        if (session('cupon')) {
+            $cuponObj = \App\Models\Cupon::with('productos')->find(session('cupon')['id']);
+            if ($cuponObj && $cuponObj->esValido()) {
+                $cuponAplicado = $cuponObj;
+                foreach ($items as $item) {
+                    if ($cuponObj->aplicaA($item->producto)) {
+                        $descuento += $cuponObj->calcularDescuento($item->subtotal);
+                    }
+                }
+            }
+        }
+
+        $totalConDescuento = max(0, $total - $descuento);
         
-        return view('ordenes.checkout', compact('items', 'total', 'direcciones'));
+        return view('ordenes.checkout', compact('items', 'total', 'direcciones', 'descuento', 'totalConDescuento', 'cuponAplicado'));
     }
 
     /**
@@ -244,7 +264,7 @@ class OrdenController extends Controller
     public function procesar(Request $request)
     {
         $request->validate([
-            'metodo_pago' => 'required|in:tarjeta,paypal',
+            'metodo_pago'  => 'required|in:tarjeta,paypal',
             'direccion_id' => 'nullable|exists:direcciones_entrega,id',
         ]);
 
@@ -258,50 +278,94 @@ class OrdenController extends Controller
         try {
             DB::beginTransaction();
 
+            $totalOriginal = $carrito->calcularTotal();
+            $descuento     = 0;
+            $cuponObj      = null;
+
+            // Aplicar cupón si existe en sesión
+            if (session('cupon')) {
+                $cuponObj = \App\Models\Cupon::with('productos')
+                    ->find(session('cupon')['id']);
+
+                if ($cuponObj && $cuponObj->esValido()) {
+                    // Verificar que el usuario no lo haya usado antes
+                    $yaUso = \App\Models\CuponUso::where('cupon_id', $cuponObj->id)
+                        ->where('user_id', Auth::id())
+                        ->exists();
+
+                    if ($yaUso) {
+                        $cuponObj = null;
+                        session()->forget('cupon');
+                    } else {
+                        foreach ($carrito->items as $item) {
+                            if ($cuponObj->aplicaA($item->producto)) {
+                                $descuento += $cuponObj->calcularDescuento($item->subtotal);
+                            }
+                        }
+                    }
+                }
+            }
+
+            $totalFinal = max(0, $totalOriginal - $descuento);
+
             // Crear la orden
             $orden = Orden::create([
-                'user_id' => Auth::id(),
-                'total' => $carrito->calcularTotal(),
-                'estado' => 'pendiente',
+                'user_id'                => Auth::id(),
+                'total'                  => $totalFinal,
+                'estado'                 => 'pendiente',
                 'fecha_entrega_estimada' => now()->addDays(5),
-                'direccion_id' => $request->direccion_id,
-                'notas' => null, // Inicializar como null
+                'direccion_id'           => $request->direccion_id,
+                'notas'                  => null,
             ]);
 
-            // Crear detalles de la orden
+            // Crear detalles
             foreach ($carrito->items as $item) {
                 DetalleOrden::create([
-                    'orden_id' => $orden->id,
-                    'producto_id' => $item->producto_id,
-                    'cantidad' => $item->cantidad,
+                    'orden_id'        => $orden->id,
+                    'producto_id'     => $item->producto_id,
+                    'cantidad'        => $item->cantidad,
                     'precio_unitario' => $item->precio_unitario,
-                    'subtotal' => $item->cantidad * $item->precio_unitario
+                    'subtotal'        => $item->cantidad * $item->precio_unitario,
                 ]);
 
-                // Reducir stock
                 $item->producto->decrement('stock', $item->cantidad);
             }
 
-            // Crear registro de pago
-            $pago = Pago::create([
-                'orden_id' => $orden->id,
-                'metodo_pago' => $request->metodo_pago,
-                'monto' => $orden->total,
-                'estado' => 'pendiente',
+            // Registrar uso del cupón
+            if ($cuponObj) {
+                \App\Models\CuponUso::create([
+                    'cupon_id' => $cuponObj->id,
+                    'user_id'  => Auth::id(),
+                    'orden_id' => $orden->id,
+                ]);
+
+                $cuponObj->increment('usos_actuales');
+                session()->forget('cupon');
+            }
+
+            // Crear pago
+            Pago::create([
+                'orden_id'       => $orden->id,
+                'metodo_pago'    => $request->metodo_pago,
+                'monto'          => $totalFinal,
+                'estado'         => 'pendiente',
                 'transaction_id' => 'TXN-' . strtoupper(uniqid()),
-                'datos_pago' => [
-                    'ip' => $request->ip(),
-                    'user_agent' => $request->userAgent()
-                ]
+                'datos_pago'     => [
+                    'ip'             => $request->ip(),
+                    'user_agent'     => $request->userAgent(),
+                    'descuento'      => $descuento,
+                    'total_original' => $totalOriginal,
+                    'cupon'          => $cuponObj?->codigo,
+                ],
             ]);
 
-            // Vaciar el carrito
+            // Vaciar carrito
             $carrito->items()->delete();
 
             DB::commit();
 
             return redirect()->route('ordenes.show', $orden->id)
-                ->with('success', 'Orden creada exitosamente. Por favor completa la información de pago.');
+                ->with('success', '¡Orden creada exitosamente! Por favor completa la información de pago.');
 
         } catch (\Exception $e) {
             DB::rollBack();
