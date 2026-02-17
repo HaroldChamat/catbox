@@ -15,6 +15,8 @@ use App\Http\Controllers\ComentarioOrdenController;
 use App\Http\Controllers\FavoritoController;
 use App\Http\Controllers\ResenaController;
 use App\Http\Controllers\Admin\ResenaAdminController;
+use App\Http\Controllers\CuponController;
+use App\Http\Controllers\Admin\CuponAdminController;
 
 // ─────────────────────────────────────────────
 // RUTAS PÚBLICAS
@@ -87,6 +89,16 @@ Route::middleware(['auth'])->group(function () {
     // Reseñas
     Route::post('/productos/{productoId}/resenas', [ResenaController::class, 'guardar'])->name('resenas.guardar');
     Route::put('/productos/{productoId}/resenas', [ResenaController::class, 'editar'])->name('resenas.editar');
+
+    // Cupones
+    Route::post('/carrito/cupon/aplicar', [CuponController::class, 'aplicar'])->name('cupon.aplicar');
+    Route::post('/carrito/cupon/quitar', [CuponController::class, 'quitar'])->name('cupon.quitar');
+
+    //Notificaciones
+    Route::post('/notificaciones/marcar-leidas', function () {
+    auth()->user()->unreadNotifications->markAsRead();
+    return response()->json(['success' => true]);
+    })->name('notificaciones.marcar-leidas');
 });
 
 
@@ -164,5 +176,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/{id}/aprobar', [ResenaAdminController::class, 'aprobar'])->name('aprobar');
         Route::post('/{id}/rechazar', [ResenaAdminController::class, 'rechazar'])->name('rechazar');
         Route::delete('/{id}', [ResenaAdminController::class, 'destruir'])->name('destruir');
+    });
+
+    // Cupones admin
+    Route::prefix('cupones')->name('cupones.')->group(function () {
+        Route::get('/', [CuponAdminController::class, 'index'])->name('index');
+        Route::get('/crear', [CuponAdminController::class, 'crear'])->name('crear');
+        Route::post('/', [CuponAdminController::class, 'guardar'])->name('guardar');
+        Route::post('/{id}/toggle', [CuponAdminController::class, 'toggleActivo'])->name('toggle');
+        Route::delete('/{id}', [CuponAdminController::class, 'destruir'])->name('destruir');
     });
 });

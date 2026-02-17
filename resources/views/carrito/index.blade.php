@@ -106,9 +106,72 @@
                     
                     <hr>
                     
+                    {{-- Cupón de descuento --}}
+                    @if(session('cupon'))
+                    @php
+                        $cuponSesion = session('cupon');
+                        $descuento = 0;
+                        $cuponObj = \App\Models\Cupon::with('productos')->find($cuponSesion['id']);
+                        if ($cuponObj) {
+                            foreach ($items as $item) {
+                                if ($cuponObj->aplicaA($item->producto)) {
+                                    $descuento += $cuponObj->calcularDescuento($item->subtotal);
+                                }
+                            }
+                        }
+                        $totalConDescuento = max(0, $total - $descuento);
+                    @endphp
+                    <div class="alert alert-success py-2 px-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-ticket-perforated-fill"></i>
+                            <strong>{{ $cuponSesion['codigo'] }}</strong>
+                            <small class="ms-1 text-muted">
+                                ({{ $cuponSesion['tipo'] === 'porcentaje' ? $cuponSesion['valor'].'%' : '$'.number_format($cuponSesion['valor'],0,',','.') }} desc.)
+                            </small>
+                        </div>
+                        <form action="{{ route('cupon.quitar') }}" method="POST" class="m-0">
+                            @csrf
+                            <button class="btn btn-sm btn-link text-danger p-0" title="Quitar cupón">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span>Descuento aplicado</span>
+                        <strong>- ${{ number_format($descuento, 0, ',', '.') }}</strong>
+                    </div>
+                    @else
+                    <form action="{{ route('cupon.aplicar') }}" method="POST" class="mb-3">
+                        @csrf
+                        <label class="form-label small fw-bold">¿Tienes un cupón?</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="codigo" class="form-control text-uppercase"
+                                   placeholder="Ej: CAT-ABC123"
+                                   value="{{ old('codigo') }}">
+                            <button class="btn btn-outline-secondary" type="submit">
+                                <i class="bi bi-check-lg"></i> Aplicar
+                            </button>
+                        </div>
+                        @error('cupon')
+                            <small class="text-danger">{{ $message }}</small>
+                        @enderror
+                    </form>
+                    @endif
+
+                    <hr>
+
                     <div class="d-flex justify-content-between mb-3">
                         <h5>Total</h5>
-                        <h5 class="text-danger">${{ number_format($total, 0, ',', '.') }}</h5>
+                        <h5 class="text-danger">
+                            @if(session('cupon') && isset($totalConDescuento))
+                                <span class="text-muted text-decoration-line-through fs-6 me-1">
+                                    ${{ number_format($total, 0, ',', '.') }}
+                                </span>
+                                ${{ number_format($totalConDescuento, 0, ',', '.') }}
+                            @else
+                                ${{ number_format($total, 0, ',', '.') }}
+                            @endif
+                        </h5>
                     </div>
 
                     <div class="d-grid gap-2">

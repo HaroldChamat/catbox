@@ -80,7 +80,13 @@
                             @endif
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('admin.cupones.index') }}">
+                            <i class="bi bi-ticket-perforated"></i> Cupones
+                        </a>
+                    </li>
                 </ul>
+                
                 <ul class="navbar-nav align-items-lg-center gap-2">
                     {{-- Botón Panel de Control --}}
                     <li class="nav-item">
@@ -141,6 +147,64 @@
                 </form>
                 <ul class="navbar-nav ms-auto align-items-lg-center gap-2">
                     <li class="nav-item"><a class="nav-link" href="{{ route('productos.index') }}"><i class="bi bi-grid"></i> Catálogo</a></li>
+
+                    {{-- Notificaciones --}}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link position-relative" href="#" data-bs-toggle="dropdown" id="btn-notificaciones">
+                            <i class="bi bi-bell fs-5"></i>
+                            @php $noLeidas = auth()->user()->unreadNotifications->count(); @endphp
+                            @if($noLeidas > 0)
+                                <span class="badge bg-danger cart-badge">{{ $noLeidas }}</span>
+                            @endif
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" style="width: 320px; max-height: 400px; overflow-y: auto;">
+                            <li class="px-3 py-2 d-flex justify-content-between align-items-center border-bottom">
+                                <strong>Notificaciones</strong>
+                                @if($noLeidas > 0)
+                                <button class="btn btn-link btn-sm p-0 text-muted" id="btn-marcar-leidas">
+                                    Marcar todas como leídas
+                                </button>
+                                @endif
+                            </li>
+
+                            @forelse(auth()->user()->notifications()->latest()->take(10)->get() as $notif)
+                            <li class="px-3 py-2 border-bottom {{ $notif->read_at ? '' : 'bg-light' }}">
+                                <div class="d-flex align-items-start gap-2">
+                                    <div class="mt-1">
+                                        @if(isset($notif->data['codigo']))
+                                            <i class="bi bi-ticket-perforated-fill text-success"></i>
+                                        @else
+                                            <i class="bi bi-bell text-primary"></i>
+                                        @endif
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div class="fw-bold small">{{ $notif->data['titulo'] ?? 'Notificación' }}</div>
+                                        <div class="small text-muted">{{ $notif->data['mensaje'] ?? '' }}</div>
+                                        @if(isset($notif->data['codigo']))
+                                        <div class="mt-1">
+                                            <code class="bg-success text-white px-2 py-1 rounded small">
+                                                {{ $notif->data['codigo'] }}
+                                            </code>
+                                        </div>
+                                        @endif
+                                        <div class="text-muted" style="font-size: 0.7rem;">
+                                            {{ $notif->created_at->diffForHumans() }}
+                                        </div>
+                                    </div>
+                                    @if(!$notif->read_at)
+                                        <div class="bg-danger rounded-circle mt-1" style="width:8px;height:8px;flex-shrink:0;"></div>
+                                    @endif
+                                </div>
+                            </li>
+                            @empty
+                            <li class="px-3 py-4 text-center text-muted">
+                                <i class="bi bi-bell-slash display-6"></i>
+                                <p class="mt-2 mb-0 small">No tienes notificaciones</p>
+                            </li>
+                            @endforelse
+                        </ul>
+                    </li>
+
                     {{-- Carrito --}}
                     <li class="nav-item">
                         <a class="nav-link position-relative" href="{{ route('carrito.index') }}">
@@ -277,6 +341,53 @@
         });
     }, 4000);
 </script>
+
+@auth
+@if(!auth()->user()->esAdmin())
+<script>
+const btnMarcarLeidas = document.getElementById('btn-marcar-leidas');
+if (btnMarcarLeidas) {
+    btnMarcarLeidas.addEventListener('click', function () {
+        fetch('{{ route('notificaciones.marcar-leidas') }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            }
+        })
+        .then(r => r.json())
+        .then(() => {
+            // Quitar badge
+            const badge = document.querySelector('#btn-notificaciones .badge');
+            if (badge) badge.remove();
+            // Quitar fondo gris de notificaciones
+            document.querySelectorAll('.bg-light').forEach(el => el.classList.remove('bg-light'));
+            // Quitar puntos rojos
+            document.querySelectorAll('.dropdown-menu .bg-danger.rounded-circle').forEach(el => el.remove());
+            // Ocultar botón
+            btnMarcarLeidas.style.display = 'none';
+        });
+    });
+}
+
+// Marcar como leídas al abrir el dropdown
+document.getElementById('btn-notificaciones')?.addEventListener('click', function () {
+    const badge = this.querySelector('.badge');
+    if (badge) {
+        fetch('{{ route('notificaciones.marcar-leidas') }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            }
+        }).then(() => {
+            badge.remove();
+        });
+    }
+});
+</script>
+@endif
+@endauth
 
 @stack('scripts')
 </body>
