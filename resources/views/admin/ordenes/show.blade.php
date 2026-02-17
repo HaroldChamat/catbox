@@ -134,8 +134,38 @@
                                     @endforeach
                                 </tbody>
                                 <tfoot class="table-light">
+                                    @php
+                                        $datosPago = $orden->pago?->datos_pago ?? [];
+                                        $descuento = $datosPago['descuento'] ?? 0;
+                                        $totalOriginal = $datosPago['total_original'] ?? $orden->total;
+                                        $cuponCodigo = $datosPago['cupon'] ?? null;
+                                        
+                                        // Calcular porcentaje de descuento
+                                        $porcentajeDescuento = $totalOriginal > 0 
+                                            ? round(($descuento / $totalOriginal) * 100, 1) 
+                                            : 0;
+                                    @endphp
+
+                                    @if($descuento > 0)
                                     <tr>
-                                        <td colspan="3" class="text-end fw-700">TOTAL:</td>
+                                        <td colspan="3" class="text-end">Subtotal:</td>
+                                        <td class="fw-600">${{ number_format($totalOriginal, 0, ',', '.') }}</td>
+                                    </tr>
+                                    <tr class="table-success">
+                                        <td colspan="3" class="text-end text-success">
+                                            <i class="bi bi-ticket-perforated-fill me-1"></i>
+                                            Descuento aplicado: {{ $porcentajeDescuento }}%
+                                            @if($cuponCodigo)
+                                            <br>
+                                            <small class="ms-1">(Cupón: <code class="text-success bg-white px-2 py-1 rounded">{{ $cuponCodigo }}</code>)</small>
+                                            @endif
+                                        </td>
+                                        <td class="fw-600 text-success">- ${{ number_format($descuento, 0, ',', '.') }}</td>
+                                    </tr>
+                                    @endif
+
+                                    <tr>
+                                        <td colspan="3" class="text-end fw-700">TOTAL PAGADO:</td>
                                         <td class="fw-800 text-danger fs-5">${{ number_format($orden->total, 0, ',', '.') }}</td>
                                     </tr>
                                 </tfoot>
@@ -217,6 +247,25 @@
                                     {{ ucfirst($orden->pago->estado) }}
                                 </span>
                             </div>
+
+                            @php
+                                $datosPago = $orden->pago->datos_pago ?? [];
+                                $cupon = $datosPago['cupon'] ?? null;
+                                $descuento = $datosPago['descuento'] ?? 0;
+                            @endphp
+
+                            @if($cupon)
+                            <div class="mb-2">
+                                <small class="text-muted d-block">Cupón aplicado</small>
+                                <div>
+                                    <code class="bg-success text-white px-2 py-1 rounded">{{ $cupon }}</code>
+                                    <small class="text-success ms-1">
+                                        (- ${{ number_format($descuento, 0, ',', '.') }})
+                                    </small>
+                                </div>
+                            </div>
+                            @endif
+
                             <div>
                                 <small class="text-muted d-block">ID Transacción</small>
                                 <code class="small">{{ $orden->pago->transaction_id }}</code>

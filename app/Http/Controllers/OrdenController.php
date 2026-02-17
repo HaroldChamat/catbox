@@ -139,25 +139,26 @@ class OrdenController extends Controller
                 ? str_replace(' ', '', $request->numero_tarjeta) 
                 : null;
             
-            // Preparar datos de pago
-            $datosPago = [
-                'metodo' => $request->metodo_pago,
-            ];
-            
-            if ($request->metodo_pago === 'tarjeta') {
-                $datosPago['ultimos_digitos'] = substr($numeroTarjeta, -4);
-                $datosPago['nombre_titular'] = $request->nombre_titular;
-            } else {
-                $datosPago['paypal_email'] = $request->paypal_email;
-            }
-            
             // Actualizar o crear pago
             if ($orden->pago) {
+                // IMPORTANTE: Obtener datos_pago existentes para no perder info del cupón
+                $datosPagoActuales = $orden->pago->datos_pago ?? [];
+                
+                // Agregar info del método de pago sin sobrescribir
+                $datosPagoActuales['metodo'] = $request->metodo_pago;
+                
+                if ($request->metodo_pago === 'tarjeta') {
+                    $datosPagoActuales['ultimos_digitos'] = substr($numeroTarjeta, -4);
+                    $datosPagoActuales['nombre_titular'] = $request->nombre_titular;
+                } else {
+                    $datosPagoActuales['paypal_email'] = $request->paypal_email;
+                }
+                
                 $orden->pago->update([
                     'metodo_pago' => $request->metodo_pago,
                     'estado' => 'completado',
                     'monto' => $orden->total,
-                    'datos_pago' => $datosPago,
+                    'datos_pago' => $datosPagoActuales, // ← PRESERVA datos anteriores
                 ]);
             } else {
                 Pago::create([
@@ -166,7 +167,12 @@ class OrdenController extends Controller
                     'monto' => $orden->total,
                     'estado' => 'completado',
                     'transaction_id' => 'TXN-' . strtoupper(uniqid()),
-                    'datos_pago' => $datosPago,
+                    'datos_pago' => [
+                        'metodo' => $request->metodo_pago,
+                        'ultimos_digitos' => $request->metodo_pago === 'tarjeta' ? substr($numeroTarjeta, -4) : null,
+                        'nombre_titular' => $request->nombre_titular ?? null,
+                        'paypal_email' => $request->paypal_email ?? null,
+                    ],
                 ]);
             }
             
