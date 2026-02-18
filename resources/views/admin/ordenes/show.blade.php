@@ -134,11 +134,54 @@
                                     @endforeach
                                 </tbody>
                                 <tfoot class="table-light">
-                                    <tr>
-                                        <td colspan="3" class="text-end fw-700">TOTAL:</td>
-                                        <td class="fw-800 text-danger fs-5">${{ number_format($orden->total, 0, ',', '.') }}</td>
-                                    </tr>
-                                </tfoot>
+                                @php
+                                    $datosPago = $orden->pago?->datos_pago ?? [];
+                                    $descuento = $datosPago['descuento'] ?? 0;
+                                    $creditoAplicado = $datosPago['credito_aplicado'] ?? 0;
+                                    $totalOriginal = $datosPago['total_original'] ?? $orden->total;
+                                    $cuponCodigo = $datosPago['cupon'] ?? null;
+                                    
+                                    $porcentajeDescuento = $totalOriginal > 0 && $descuento > 0
+                                        ? round(($descuento / $totalOriginal) * 100, 1) 
+                                        : 0;
+                                @endphp
+
+                                @if($descuento > 0 || $creditoAplicado > 0)
+                                <tr>
+                                    <td colspan="3" class="text-end">Subtotal:</td>
+                                    <td class="fw-600">${{ number_format($totalOriginal, 0, ',', '.') }}</td>
+                                </tr>
+                                @endif
+
+                                @if($descuento > 0)
+                                <tr class="table-success">
+                                    <td colspan="3" class="text-end text-success">
+                                        <i class="bi bi-ticket-perforated-fill me-1"></i>
+                                        Descuento aplicado: {{ $porcentajeDescuento }}%
+                                        @if($cuponCodigo)
+                                        <br>
+                                        <small class="ms-1">(Cupón: <code class="text-success bg-white px-2 py-1 rounded">{{ $cuponCodigo }}</code>)</small>
+                                        @endif
+                                    </td>
+                                    <td class="fw-600 text-success">- ${{ number_format($descuento, 0, ',', '.') }}</td>
+                                </tr>
+                                @endif
+
+                                @if($creditoAplicado > 0)
+                                <tr class="table-info">
+                                    <td colspan="3" class="text-end text-primary">
+                                        <i class="bi bi-wallet2 me-1"></i>
+                                        Crédito aplicado
+                                    </td>
+                                    <td class="fw-600 text-primary">- ${{ number_format($creditoAplicado, 0, ',', '.') }}</td>
+                                </tr>
+                                @endif
+
+                                <tr>
+                                    <td colspan="3" class="text-end fw-700">TOTAL PAGADO:</td>
+                                    <td class="fw-800 text-danger fs-5">${{ number_format($orden->total, 0, ',', '.') }}</td>
+                                </tr>
+                            </tfoot>
                             </table>
                         </div>
                     </div>
@@ -194,6 +237,7 @@
                                     <option value="enviado" {{ $orden->estado == 'enviado' ? 'selected' : '' }}>Enviado</option>
                                     <option value="entregado" {{ $orden->estado == 'entregado' ? 'selected' : '' }}>Entregado</option>
                                     <option value="cancelado" {{ $orden->estado == 'cancelado' ? 'selected' : '' }}>Cancelado</option>
+                                    <option value="devuelto" {{ $orden->estado == 'devuelto' ? 'selected' : '' }}>Devuelto</option>
                                 </select>
                                 <button type="submit" class="btn btn-primary w-100">Actualizar Estado</button>
                             </form>
@@ -217,6 +261,25 @@
                                     {{ ucfirst($orden->pago->estado) }}
                                 </span>
                             </div>
+
+                            @php
+                                $datosPago = $orden->pago->datos_pago ?? [];
+                                $cupon = $datosPago['cupon'] ?? null;
+                                $descuento = $datosPago['descuento'] ?? 0;
+                            @endphp
+
+                            @if($cupon)
+                            <div class="mb-2">
+                                <small class="text-muted d-block">Cupón aplicado</small>
+                                <div>
+                                    <code class="bg-success text-white px-2 py-1 rounded">{{ $cupon }}</code>
+                                    <small class="text-success ms-1">
+                                        (- ${{ number_format($descuento, 0, ',', '.') }})
+                                    </small>
+                                </div>
+                            </div>
+                            @endif
+
                             <div>
                                 <small class="text-muted d-block">ID Transacción</small>
                                 <code class="small">{{ $orden->pago->transaction_id }}</code>

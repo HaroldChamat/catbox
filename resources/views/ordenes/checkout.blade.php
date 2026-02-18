@@ -106,7 +106,7 @@
                         <strong>${{ number_format($total, 0, ',', '.') }}</strong>
                     </div>
 
-            <div class="d-flex justify-content-between mb-3">
+                    <div class="d-flex justify-content-between mb-3">
                         <span>Envío</span>
                         <span class="text-success">Gratis</span>
                     </div>
@@ -114,30 +114,44 @@
                     @if($descuento > 0 && $cuponAplicado)
                     <div class="d-flex justify-content-between mb-2 text-success">
                         <span>
-                            <i class="bi bi-ticket-perforated-fill"></i>
+                            <i class="bi bi-ticket-perforated-fill me-1"></i>
                             Cupón <code>{{ $cuponAplicado->codigo }}</code>
                         </span>
                         <strong>- ${{ number_format($descuento, 0, ',', '.') }}</strong>
                     </div>
                     @endif
 
+                    @if($creditoAplicado > 0)
+                    <div class="d-flex justify-content-between mb-2 text-primary">
+                        <span>
+                            <i class="bi bi-wallet2 me-1"></i>
+                            Crédito aplicado
+                        </span>
+                        <strong>- ${{ number_format($creditoAplicado, 0, ',', '.') }}</strong>
+                    </div>
+                    @endif
+
                     <hr>
 
                     <div class="d-flex justify-content-between">
-                        <h5>Total</h5>
+                        <h5>Total a pagar</h5>
                         <h5 class="text-danger">
-                            @if($descuento > 0)
+                            @if($descuento > 0 || $creditoAplicado > 0)
                                 <span class="text-muted text-decoration-line-through fs-6 me-1">
                                     ${{ number_format($total, 0, ',', '.') }}
                                 </span>
-                                ${{ number_format($totalConDescuento, 0, ',', '.') }}
-                            @else
-                                ${{ number_format($total, 0, ',', '.') }}
                             @endif
+                            ${{ number_format($totalFinal, 0, ',', '.') }}
                         </h5>
                     </div>
-                </div>
-            </div>
+
+                    @if($totalFinal == 0)
+                    <div class="alert alert-success mt-3">
+                        <i class="bi bi-check-circle me-2"></i>
+                        <strong>¡Pedido cubierto completamente!</strong>
+                        <small class="d-block mt-1">El crédito cubre el costo total</small>
+                    </div>
+                    @endif
 
             {{-- Información de seguridad --}}
             <div class="card shadow-sm mt-3">

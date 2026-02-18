@@ -151,6 +151,73 @@
                 </div>
             </div>
 
+            {{-- Botón solicitar devolución --}}
+            @if($orden->puedeSerDevuelta() && !$orden->tieneSolicitudDevolucionPendiente())
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-body text-center">
+                    <h6><i class="bi bi-arrow-return-left me-2"></i>¿Problema con tu pedido?</h6>
+                    <p class="text-muted small mb-3">Tienes 30 días desde la entrega para solicitar una devolución</p>
+                    <a href="{{ route('devoluciones.crear', $orden->id) }}" class="btn btn-outline-danger">
+                        Solicitar devolución
+                    </a>
+                </div>
+            </div>
+            @elseif($orden->tieneSolicitudDevolucionPendiente())
+            <div class="alert alert-warning mt-3">
+                <i class="bi bi-clock me-2"></i>Tienes una solicitud de devolución pendiente de revisión
+            </div>
+            @endif
+
+            {{-- Mostrar devoluciones y sus respuestas --}}
+            @if($orden->devoluciones->count() > 0)
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-arrow-return-left me-2"></i>Devoluciones</h6>
+                </div>
+                <div class="card-body">
+                    @foreach($orden->devoluciones as $devolucion)
+                    <div class="mb-3 pb-3 {{ !$loop->last ? 'border-bottom' : '' }}">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <strong>Solicitud del {{ $devolucion->created_at->format('d/m/Y') }}</strong>
+                                <br>
+                                <small class="text-muted">Monto: ${{ number_format($devolucion->monto_total, 0, ',', '.') }}</small>
+                            </div>
+                            @if($devolucion->estado === 'pendiente')
+                                <span class="badge bg-warning text-dark">Pendiente</span>
+                            @elseif($devolucion->estado === 'aprobada')
+                                <span class="badge bg-success">Aprobada</span>
+                            @else
+                                <span class="badge bg-danger">Rechazada</span>
+                            @endif
+                        </div>
+
+                        @if($devolucion->respuesta_admin)
+                        <div class="alert alert-{{ $devolucion->estaAprobada() ? 'success' : 'danger' }} mb-0">
+                            <strong>
+                                <i class="bi bi-{{ $devolucion->estaAprobada() ? 'check-circle' : 'x-circle' }} me-1"></i>
+                                Respuesta del administrador:
+                            </strong>
+                            <p class="mb-0 mt-1">{{ $devolucion->respuesta_admin }}</p>
+                            
+                            @if($devolucion->estaAprobada())
+                            <hr>
+                            <small>
+                                <i class="bi bi-wallet2 me-1"></i>
+                                Se generó un crédito de ${{ number_format($devolucion->monto_total, 0, ',', '.') }} en tu cuenta.
+                                <a href="{{ route('creditos.index') }}" class="alert-link">Ver mis créditos</a>
+                            </small>
+                            @endif
+                        </div>
+                        @else
+                        <p class="text-muted mb-0"><em>Esperando respuesta del administrador...</em></p>
+                        @endif
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- Lista de productos --}}
             <div class="card info-card shadow-sm">
                 <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">

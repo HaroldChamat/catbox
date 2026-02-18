@@ -36,7 +36,7 @@ class OrdenController extends Controller
      */
     public function show($id)
     {
-        $orden = Orden::with(['detalles.producto.imagenPrincipal', 'pago', 'user', 'direccion', 'comentarios.user'])
+        $orden = Orden::with(['detalles.producto.imagenPrincipal', 'pago', 'user', 'direccion', 'comentarios.user', 'devoluciones'])
             ->where('user_id', Auth::id())
             ->findOrFail($id);
         
@@ -139,25 +139,26 @@ class OrdenController extends Controller
                 ? str_replace(' ', '', $request->numero_tarjeta) 
                 : null;
             
-            // Preparar datos de pago
-            $datosPago = [
-                'metodo' => $request->metodo_pago,
-            ];
-            
-            if ($request->metodo_pago === 'tarjeta') {
-                $datosPago['ultimos_digitos'] = substr($numeroTarjeta, -4);
-                $datosPago['nombre_titular'] = $request->nombre_titular;
-            } else {
-                $datosPago['paypal_email'] = $request->paypal_email;
-            }
-            
             // Actualizar o crear pago
             if ($orden->pago) {
+                // IMPORTANTE: Obtener datos_pago existentes para no perder info del cupón
+                $datosPagoActuales = $orden->pago->datos_pago ?? [];
+                
+                // Agregar info del método de pago sin sobrescribir
+                $datosPagoActuales['metodo'] = $request->metodo_pago;
+                
+                if ($request->metodo_pago === 'tarjeta') {
+                    $datosPagoActuales['ultimos_digitos'] = substr($numeroTarjeta, -4);
+                    $datosPagoActuales['nombre_titular'] = $request->nombre_titular;
+                } else {
+                    $datosPagoActuales['paypal_email'] = $request->paypal_email;
+                }
+                
                 $orden->pago->update([
                     'metodo_pago' => $request->metodo_pago,
                     'estado' => 'completado',
                     'monto' => $orden->total,
-                    'datos_pago' => $datosPago,
+                    'datos_pago' => $datosPagoActuales, // ← PRESERVA datos anteriores
                 ]);
             } else {
                 Pago::create([
@@ -166,7 +167,12 @@ class OrdenController extends Controller
                     'monto' => $orden->total,
                     'estado' => 'completado',
                     'transaction_id' => 'TXN-' . strtoupper(uniqid()),
-                    'datos_pago' => $datosPago,
+                    'datos_pago' => [
+                        'metodo' => $request->metodo_pago,
+                        'ultimos_digitos' => $request->metodo_pago === 'tarjeta' ? substr($numeroTarjeta, -4) : null,
+                        'nombre_titular' => $request->nombre_titular ?? null,
+                        'paypal_email' => $request->paypal_email ?? null,
+                    ],
                 ]);
             }
             
@@ -237,7 +243,7 @@ class OrdenController extends Controller
         $total = $carrito->calcularTotal();
         $direcciones = Auth::user()->direcciones;
 
-        // Calcular descuento si hay cupón en sesión
+        // Calcular descuento de cupón
         $descuento = 0;
         $cuponAplicado = null;
 
@@ -254,8 +260,22 @@ class OrdenController extends Controller
         }
 
         $totalConDescuento = max(0, $total - $descuento);
+
+        // Calcular crédito aplicado
+        $creditoAplicado = 0;
+        $saldoCreditosTotal = Auth::user()->saldoCreditosTotal();
+
+        if (session('usar_credito') && $saldoCreditosTotal > 0) {
+            $creditoAplicado = min($saldoCreditosTotal, $totalConDescuento);
+        }
+
+        $totalFinal = max(0, $totalConDescuento - $creditoAplicado);
         
-        return view('ordenes.checkout', compact('items', 'total', 'direcciones', 'descuento', 'totalConDescuento', 'cuponAplicado'));
+        return view('ordenes.checkout', compact(
+            'items', 'total', 'direcciones', 'descuento', 
+            'totalConDescuento', 'cuponAplicado', 'creditoAplicado', 
+            'totalFinal', 'saldoCreditosTotal'
+        ));
     }
 
     /**
@@ -282,13 +302,12 @@ class OrdenController extends Controller
             $descuento     = 0;
             $cuponObj      = null;
 
-            // Aplicar cupón si existe en sesión
+            // Aplicar cupón
             if (session('cupon')) {
                 $cuponObj = \App\Models\Cupon::with('productos')
                     ->find(session('cupon')['id']);
 
                 if ($cuponObj && $cuponObj->esValido()) {
-                    // Verificar que el usuario no lo haya usado antes
                     $yaUso = \App\Models\CuponUso::where('cupon_id', $cuponObj->id)
                         ->where('user_id', Auth::id())
                         ->exists();
@@ -306,9 +325,33 @@ class OrdenController extends Controller
                 }
             }
 
-            $totalFinal = max(0, $totalOriginal - $descuento);
+            $totalDespuesCupon = max(0, $totalOriginal - $descuento);
 
-            // Crear la orden
+            // Aplicar crédito
+            $creditoAplicado = 0;
+            $creditosUsados = [];
+
+            if (session('usar_credito')) {
+                $creditosDisponibles = Auth::user()->creditosDisponibles();
+                $montoRestante = $totalDespuesCupon;
+
+                foreach ($creditosDisponibles as $credito) {
+                    if ($montoRestante <= 0) break;
+
+                    $montoAUsar = min($credito->saldo, $montoRestante);
+                    $creditoAplicado += $montoAUsar;
+                    $montoRestante -= $montoAUsar;
+
+                    $creditosUsados[] = [
+                        'credito' => $credito,
+                        'monto_usado' => $montoAUsar,
+                    ];
+                }
+            }
+
+            $totalFinal = max(0, $totalDespuesCupon - $creditoAplicado);
+
+            // Crear orden
             $orden = Orden::create([
                 'user_id'                => Auth::id(),
                 'total'                  => $totalFinal,
@@ -343,6 +386,21 @@ class OrdenController extends Controller
                 session()->forget('cupon');
             }
 
+            // Actualizar saldos de créditos
+            foreach ($creditosUsados as $uso) {
+                $credito = $uso['credito'];
+                $nuevoSaldo = $credito->saldo - $uso['monto_usado'];
+                
+                $credito->update([
+                    'saldo' => $nuevoSaldo,
+                    'usado' => $nuevoSaldo <= 0,
+                ]);
+            }
+
+            if (session('usar_credito')) {
+                session()->forget('usar_credito');
+            }
+
             // Crear pago
             Pago::create([
                 'orden_id'       => $orden->id,
@@ -356,6 +414,8 @@ class OrdenController extends Controller
                     'descuento'      => $descuento,
                     'total_original' => $totalOriginal,
                     'cupon'          => $cuponObj?->codigo,
+                    'credito_aplicado' => $creditoAplicado,
+                    'total_con_descuento' => $totalDespuesCupon,
                 ],
             ]);
 
@@ -373,7 +433,6 @@ class OrdenController extends Controller
             return back()->with('error', 'Error al procesar la orden. Por favor, intenta de nuevo.');
         }
     }
-
     /**
      * Mostrar confirmación de orden
      */

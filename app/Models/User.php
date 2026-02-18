@@ -21,6 +21,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'avatar',       
+        'telefono',     
+        'fecha_nacimiento', 
         'is_admin',
     ];
 
@@ -44,6 +47,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'fecha_nacimiento' => 'date',
             'is_admin' => 'boolean',
         ];
     }
@@ -97,5 +101,25 @@ class User extends Authenticatable
             return $this->carrito()->create();
         }
         return $this->carrito;
+    }
+
+    public function devoluciones()
+    {
+        return $this->hasMany(Devolucion::class);
+    }
+
+    public function creditos()
+    {
+        return $this->hasMany(Credito::class);
+    }
+
+    public function creditosDisponibles()
+    {
+        return $this->creditos()->where('saldo', '>', 0)->where('usado', false)->get();
+    }
+
+    public function saldoCreditosTotal()
+    {
+        return $this->creditos()->where('usado', false)->sum('saldo');
     }
 }
