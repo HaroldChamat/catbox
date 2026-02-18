@@ -121,6 +121,46 @@
                         }
                         $totalConDescuento = max(0, $total - $descuento);
                     @endphp
+
+                    {{-- Créditos disponibles --}}
+                    @if($saldoCreditosTotal > 0)
+                    <div class="alert alert-success py-2 px-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-wallet2"></i>
+                                <strong>Crédito disponible:</strong> 
+                                ${{ number_format($saldoCreditosTotal, 0, ',', '.') }}
+                            </div>
+                            @if(session('usar_credito'))
+                            <form action="{{ route('credito.quitar') }}" method="POST" class="m-0">
+                                @csrf
+                                <button class="btn btn-sm btn-link text-danger p-0" title="No usar crédito">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </form>
+                            @else
+                            <form action="{{ route('credito.aplicar') }}" method="POST" class="m-0">
+                                @csrf
+                                <button class="btn btn-sm btn-success">Usar crédito</button>
+                            </form>
+                            @endif
+                        </div>
+                    </div>
+
+                    @if(session('usar_credito'))
+                    @php
+                        $creditoAplicado = min($saldoCreditosTotal, session('cupon') ? $totalConDescuento : $total);
+                        $totalFinalConCredito = max(0, (session('cupon') ? $totalConDescuento : $total) - $creditoAplicado);
+                    @endphp
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span>Crédito aplicado</span>
+                        <strong>- ${{ number_format($creditoAplicado, 0, ',', '.') }}</strong>
+                    </div>
+                    @endif
+                    @endif
+
+                    <hr>
+
                     <div class="alert alert-success py-2 px-3 d-flex justify-content-between align-items-center">
                         <div>
                             <i class="bi bi-ticket-perforated-fill"></i>
@@ -163,14 +203,27 @@
                     <div class="d-flex justify-content-between mb-3">
                         <h5>Total</h5>
                         <h5 class="text-danger">
-                            @if(session('cupon') && isset($totalConDescuento))
+                            @php
+                                $totalFinal = $total;
+                                
+                                // Aplicar descuento de cupón si existe
+                                if(session('cupon') && isset($totalConDescuento)) {
+                                    $totalFinal = $totalConDescuento;
+                                }
+                                
+                                // Aplicar crédito si está activado
+                                if(session('usar_credito') && $saldoCreditosTotal > 0) {
+                                    $creditoAUsar = min($saldoCreditosTotal, $totalFinal);
+                                    $totalFinal = max(0, $totalFinal - $creditoAUsar);
+                                }
+                            @endphp
+
+                            @if(session('usar_credito') || (session('cupon') && isset($totalConDescuento)))
                                 <span class="text-muted text-decoration-line-through fs-6 me-1">
                                     ${{ number_format($total, 0, ',', '.') }}
                                 </span>
-                                ${{ number_format($totalConDescuento, 0, ',', '.') }}
-                            @else
-                                ${{ number_format($total, 0, ',', '.') }}
                             @endif
+                            ${{ number_format($totalFinal, 0, ',', '.') }}
                         </h5>
                     </div>
 

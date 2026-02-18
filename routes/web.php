@@ -18,6 +18,9 @@ use App\Http\Controllers\Admin\ResenaAdminController;
 use App\Http\Controllers\CuponController;
 use App\Http\Controllers\Admin\CuponAdminController;
 use App\Http\Controllers\PerfilController;
+use App\Http\Controllers\DevolucionController;
+use App\Http\Controllers\Admin\DevolucionAdminController;
+use App\Http\Controllers\CreditoController;
 
 // ─────────────────────────────────────────────
 // RUTAS PÚBLICAS
@@ -117,6 +120,17 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/direcciones/{id}', [PerfilController::class, 'editarDireccion'])->name('direcciones.editar');
         Route::delete('/direcciones/{id}', [PerfilController::class, 'eliminarDireccion'])->name('direcciones.eliminar');
     });
+    // Devoluciones
+    Route::prefix('devoluciones')->name('devoluciones.')->group(function () {
+        Route::get('/', [DevolucionController::class, 'misDevoluciones'])->name('index');
+        Route::get('/crear/{ordenId}', [DevolucionController::class, 'crear'])->name('crear');
+        Route::post('/guardar/{ordenId}', [DevolucionController::class, 'guardar'])->name('guardar');
+    });
+
+    // Créditos
+    Route::post('/carrito/credito/aplicar', [CreditoController::class, 'aplicar'])->name('credito.aplicar');
+    Route::post('/carrito/credito/quitar', [CreditoController::class, 'quitar'])->name('credito.quitar');
+    Route::get('/creditos', [CreditoController::class, 'misSaldos'])->name('creditos.index');
 });
 
 
@@ -203,5 +217,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/', [CuponAdminController::class, 'guardar'])->name('guardar');
         Route::post('/{id}/toggle', [CuponAdminController::class, 'toggleActivo'])->name('toggle');
         Route::delete('/{id}', [CuponAdminController::class, 'destruir'])->name('destruir');
+    });
+    // Devoluciones admin
+    Route::prefix('devoluciones')->name('devoluciones.')->group(function () {
+        Route::get('/', [DevolucionAdminController::class, 'index'])->name('index');
+        Route::get('/{id}', [DevolucionAdminController::class, 'show'])->name('show');
+        Route::post('/{id}/aprobar', [DevolucionAdminController::class, 'aprobar'])->name('aprobar');
+        Route::post('/{id}/rechazar', [DevolucionAdminController::class, 'rechazar'])->name('rechazar');
     });
 });

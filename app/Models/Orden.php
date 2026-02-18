@@ -107,4 +107,28 @@ class Orden extends Model
             ->where('es_admin', '!=', $esAdmin)
             ->count();
     }
+
+    public function devoluciones()
+    {
+        return $this->hasMany(Devolucion::class);
+    }
+
+    public function puedeSerDevuelta()
+    {
+        // Solo órdenes entregadas
+        if ($this->estado !== 'entregado') {
+            return false;
+        }
+
+        // Verificar que no hayan pasado más de 30 días desde la entrega
+        // (asumiendo que updated_at se actualiza al cambiar a entregado)
+        $diasDesdeEntrega = now()->diffInDays($this->updated_at);
+        
+        return $diasDesdeEntrega <= 30;
+    }
+
+    public function tieneSolicitudDevolucionPendiente()
+    {
+        return $this->devoluciones()->where('estado', 'pendiente')->exists();
+    }
 }

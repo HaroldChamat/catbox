@@ -102,4 +102,24 @@ class User extends Authenticatable
         }
         return $this->carrito;
     }
+
+    public function devoluciones()
+    {
+        return $this->hasMany(Devolucion::class);
+    }
+
+    public function creditos()
+    {
+        return $this->hasMany(Credito::class);
+    }
+
+    public function creditosDisponibles()
+    {
+        return $this->creditos()->where('saldo', '>', 0)->where('usado', false)->get();
+    }
+
+    public function saldoCreditosTotal()
+    {
+        return $this->creditos()->where('usado', false)->sum('saldo');
+    }
 }

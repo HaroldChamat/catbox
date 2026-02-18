@@ -87,6 +87,16 @@
                     </li>
                 </ul>
                 
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('admin.devoluciones.index') }}">
+                        <i class="bi bi-arrow-return-left"></i> Devoluciones
+                        @php $devPendientes = \App\Models\Devolucion::where('estado', 'pendiente')->count(); @endphp
+                        @if($devPendientes > 0)
+                            <span class="badge bg-danger">{{ $devPendientes }}</span>
+                        @endif
+                    </a>
+                </li>
+
                 <ul class="navbar-nav align-items-lg-center gap-2">
                     {{-- Botón Panel de Control --}}
                     <li class="nav-item">
@@ -171,7 +181,9 @@
                             <li class="px-3 py-2 border-bottom {{ $notif->read_at ? '' : 'bg-light' }}">
                                 <div class="d-flex align-items-start gap-2">
                                     <div class="mt-1">
-                                        @if(isset($notif->data['codigo']))
+                                        @if(isset($notif->data['tipo']) && $notif->data['tipo'] === 'devolucion')
+                                            <i class="bi bi-arrow-return-left {{ $notif->data['aprobada'] ? 'text-success' : 'text-danger' }}"></i>
+                                        @elseif(isset($notif->data['codigo']))
                                             <i class="bi bi-ticket-perforated-fill text-success"></i>
                                         @else
                                             <i class="bi bi-bell text-primary"></i>
@@ -180,6 +192,7 @@
                                     <div style="flex: 1;">
                                         <div class="fw-bold small">{{ $notif->data['titulo'] ?? 'Notificación' }}</div>
                                         <div class="small text-muted">{{ $notif->data['mensaje'] ?? '' }}</div>
+                                        
                                         @if(isset($notif->data['codigo']))
                                         <div class="mt-1">
                                             <code class="bg-success text-white px-2 py-1 rounded small">
@@ -187,6 +200,15 @@
                                             </code>
                                         </div>
                                         @endif
+
+                                        @if(isset($notif->data['orden_id']))
+                                        <div class="mt-1">
+                                            <a href="{{ route('ordenes.show', $notif->data['orden_id']) }}" class="small text-primary">
+                                                Ver orden <i class="bi bi-arrow-right"></i>
+                                            </a>
+                                        </div>
+                                        @endif
+
                                         <div class="text-muted" style="font-size: 0.7rem;">
                                             {{ $notif->created_at->diffForHumans() }}
                                         </div>

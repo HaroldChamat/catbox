@@ -51,6 +51,24 @@
                     <i class="bi bi-heart me-2"></i>Mis Favoritos
                 </a>
             </li>
+
+            <li class="nav-item">
+                <a class="nav-link text-dark" href="{{ route('devoluciones.index') }}">
+                    <i class="bi bi-arrow-return-left me-2"></i>Mis Devoluciones
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('creditos.index') ? 'active text-danger fw-bold' : 'text-dark' }}" 
+                href="{{ route('creditos.index') }}">
+                    <i class="bi bi-wallet2 me-2"></i>Mis Créditos
+                    @php $saldo = auth()->user()->saldoCreditosTotal(); @endphp
+                    @if($saldo > 0)
+                        <span class="badge bg-success">${{ number_format($saldo, 0, ',', '.') }}</span>
+                    @endif
+                </a>
+            </li>
+            
         </ul>
     </div>
 </div>

@@ -20,11 +20,21 @@ class CarritoController extends Controller
      */
     public function index()
     {
-        $carrito = Auth::user()->obtenerOCrearCarrito();
-        $items = $carrito->items()->with(['producto.imagenPrincipal'])->get();
-        $total = $carrito->calcularTotal();
+        $carrito = Auth::user()->carrito;
         
-        return view('carrito.index', compact('carrito', 'items', 'total'));
+        if (!$carrito) {
+            $items = collect([]);
+            $total = 0;
+        } else {
+            $items = $carrito->items()->with(['producto.imagenPrincipal', 'producto.categoria'])->get();
+            $total = $carrito->calcularTotal();
+        }
+
+        // Créditos disponibles del usuario
+        $creditosDisponibles = Auth::user()->creditosDisponibles();
+        $saldoCreditosTotal = Auth::user()->saldoCreditosTotal();
+
+        return view('carrito.index', compact('carrito', 'items', 'total', 'creditosDisponibles', 'saldoCreditosTotal'));
     }
 
     /**
