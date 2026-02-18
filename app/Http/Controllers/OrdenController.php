@@ -284,7 +284,7 @@ class OrdenController extends Controller
     public function procesar(Request $request)
     {
         $request->validate([
-            'metodo_pago'  => 'required|in:tarjeta,paypal',
+            'metodo_pago'  => 'required|in:tarjeta,paypal,credito',
             'direccion_id' => 'nullable|exists:direcciones_entrega,id',
         ]);
 

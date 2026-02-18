@@ -52,7 +52,25 @@
 
     {{-- Stats --}}
     <div class="row g-4 mb-4">
-        <div class="col-md-4">
+        {{-- CRÉDITOS (NUEVO) --}}
+        @php $creditoDisponible = auth()->user()->saldoCreditosTotal(); @endphp
+        @if($creditoDisponible > 0)
+        <div class="col-md-3">
+            <div class="card stat-card shadow-sm p-4 border-start border-success border-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                        <i class="bi bi-wallet2 fs-3 text-success"></i>
+                    </div>
+                    <div>
+                        <div class="fs-2 fw-800 text-success">${{ number_format($creditoDisponible, 0, ',', '.') }}</div>
+                        <small class="text-muted">Crédito disponible</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        <div class="col-md-{{ $creditoDisponible > 0 ? '3' : '4' }}">
             <div class="card stat-card shadow-sm p-4 border-start border-primary border-4">
                 <div class="d-flex align-items-center gap-3">
                     <div class="bg-primary bg-opacity-10 rounded-circle p-3">
@@ -65,7 +83,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-{{ $creditoDisponible > 0 ? '3' : '4' }}">
             <div class="card stat-card shadow-sm p-4 border-start border-success border-4">
                 <div class="d-flex align-items-center gap-3">
                     <div class="bg-success bg-opacity-10 rounded-circle p-3">
@@ -78,7 +96,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-{{ $creditoDisponible > 0 ? '3' : '4' }}">
             <div class="card stat-card shadow-sm p-4 border-start border-danger border-4">
                 <div class="d-flex align-items-center gap-3">
                     <div class="bg-danger bg-opacity-10 rounded-circle p-3">
@@ -96,6 +114,19 @@
 
     {{-- Acciones rápidas --}}
     <div class="row g-3 mb-5">
+        {{-- CRÉDITOS (NUEVO) --}}
+        @if(auth()->user()->saldoCreditosTotal() > 0)
+        <div class="col-md-3 col-6">
+            <a href="{{ route('creditos.index') }}" class="text-decoration-none">
+                <div class="card border-0 shadow-sm text-center p-4 h-100 stat-card">
+                    <i class="bi bi-wallet2 display-5 text-success mb-2"></i>
+                    <span class="fw-600 small">Mis créditos</span>
+                    <small class="text-success">${{ number_format(auth()->user()->saldoCreditosTotal(), 0, ',', '.') }}</small>
+                </div>
+            </a>
+        </div>
+        @endif
+
         <div class="col-md-3 col-6">
             <a href="{{ route('productos.index') }}" class="text-decoration-none">
                 <div class="card border-0 shadow-sm text-center p-4 h-100 stat-card">

@@ -238,6 +238,20 @@
                             @endif
                         </a>
                     </li>
+
+                    {{-- Créditos --}}
+                    @php $saldoCreditos = auth()->user()->saldoCreditosTotal(); @endphp
+                    @if($saldoCreditos > 0)
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="{{ route('creditos.index') }}" title="Mis créditos">
+                            <i class="bi bi-wallet2 fs-5 text-success"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge bg-success" style="font-size: 0.6rem;">
+                                ${{ number_format($saldoCreditos/1000, 0) }}K
+                            </span>
+                        </a>
+                    </li>
+                    @endif
+
                     {{-- Dropdown usuario --}}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" data-bs-toggle="dropdown">

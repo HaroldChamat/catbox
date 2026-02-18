@@ -251,22 +251,32 @@
                             <h6 class="fw-700 mb-0"><i class="bi bi-credit-card me-2"></i>Pago</h6>
                         </div>
                         <div class="card-body">
+                            @php
+                                $datosPago = $orden->pago->datos_pago ?? [];
+                                $cupon = $datosPago['cupon'] ?? null;
+                                $descuento = $datosPago['descuento'] ?? 0;
+                                $creditoAplicado = $datosPago['credito_aplicado'] ?? 0;
+                                $totalOriginal = $datosPago['total_original'] ?? $orden->total;
+                            @endphp
+
+                            @if($orden->pago->metodo_pago === 'credito')
+                            <div class="alert alert-success mb-3">
+                                <i class="bi bi-wallet2 me-1"></i>
+                                <strong>Pagado completamente con crédito</strong>
+                            </div>
+                            @else
                             <div class="mb-2">
                                 <small class="text-muted d-block">Método</small>
                                 <div class="text-capitalize">{{ $orden->pago->metodo_pago }}</div>
                             </div>
+                            @endif
+
                             <div class="mb-2">
                                 <small class="text-muted d-block">Estado</small>
                                 <span class="badge bg-{{ $orden->pago->estado == 'completado' ? 'success' : 'warning' }}">
                                     {{ ucfirst($orden->pago->estado) }}
                                 </span>
                             </div>
-
-                            @php
-                                $datosPago = $orden->pago->datos_pago ?? [];
-                                $cupon = $datosPago['cupon'] ?? null;
-                                $descuento = $datosPago['descuento'] ?? 0;
-                            @endphp
 
                             @if($cupon)
                             <div class="mb-2">
@@ -276,6 +286,22 @@
                                     <small class="text-success ms-1">
                                         (- ${{ number_format($descuento, 0, ',', '.') }})
                                     </small>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if($creditoAplicado > 0)
+                            <div class="mb-2">
+                                <small class="text-muted d-block">Crédito aplicado</small>
+                                <div>
+                                    <span class="badge bg-success">
+                                        ${{ number_format($creditoAplicado, 0, ',', '.') }}
+                                    </span>
+                                    @if($orden->total == 0)
+                                    <small class="text-success ms-1">(Cubrió el total)</small>
+                                    @else
+                                    <small class="text-success ms-1">(Diferencia pagada: ${{ number_format($orden->total, 0, ',', '.') }})</small>
+                                    @endif
                                 </div>
                             </div>
                             @endif
