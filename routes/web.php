@@ -17,6 +17,7 @@ use App\Http\Controllers\ResenaController;
 use App\Http\Controllers\Admin\ResenaAdminController;
 use App\Http\Controllers\CuponController;
 use App\Http\Controllers\Admin\CuponAdminController;
+use App\Http\Controllers\PerfilController;
 
 // ─────────────────────────────────────────────
 // RUTAS PÚBLICAS
@@ -99,6 +100,23 @@ Route::middleware(['auth'])->group(function () {
     auth()->user()->unreadNotifications->markAsRead();
     return response()->json(['success' => true]);
     })->name('notificaciones.marcar-leidas');
+    // Perfil de usuario
+    Route::prefix('perfil')->name('perfil.')->group(function () {
+        Route::get('/', [PerfilController::class, 'index'])->name('index');
+        Route::put('/actualizar', [PerfilController::class, 'actualizarInfo'])->name('actualizar');
+        
+        Route::get('/avatar', [PerfilController::class, 'avatar'])->name('avatar');
+        Route::post('/avatar', [PerfilController::class, 'actualizarAvatar'])->name('avatar.actualizar');
+        Route::delete('/avatar', [PerfilController::class, 'eliminarAvatar'])->name('avatar.eliminar');
+        
+        Route::get('/password', [PerfilController::class, 'password'])->name('password');
+        Route::put('/password', [PerfilController::class, 'actualizarPassword'])->name('password.actualizar');
+        
+        Route::get('/direcciones', [PerfilController::class, 'direcciones'])->name('direcciones');
+        Route::post('/direcciones', [PerfilController::class, 'guardarDireccion'])->name('direcciones.guardar');
+        Route::put('/direcciones/{id}', [PerfilController::class, 'editarDireccion'])->name('direcciones.editar');
+        Route::delete('/direcciones/{id}', [PerfilController::class, 'eliminarDireccion'])->name('direcciones.eliminar');
+    });
 });
 
 

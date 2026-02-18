@@ -228,7 +228,7 @@
                             <li><span class="dropdown-item-text fw-bold">{{ auth()->user()->name }}</span></li>
                             <li><span class="dropdown-item-text text-muted small">{{ auth()->user()->email }}</span></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ route('home') }}"><i class="bi bi-person"></i> Mi cuenta</a></li>
+                            <li><a class="dropdown-item" href="{{ route('perfil.index') }}"><i class="bi bi-person"></i> Mi cuenta</a></li>
                             <li><a class="dropdown-item" href="{{ route('ordenes.index') }}"><i class="bi bi-bag"></i> Mis órdenes</a></li>
                             <li><a class="dropdown-item" href="{{ route('favoritos.index') }}"><i class="bi bi-heart-fill text-danger"></i> Mis favoritos</a></li>
                             <li><hr class="dropdown-divider"></li>
