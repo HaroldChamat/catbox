@@ -21,6 +21,8 @@ use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\DevolucionController;
 use App\Http\Controllers\Admin\DevolucionAdminController;
 use App\Http\Controllers\CreditoController;
+use App\Http\Controllers\UsuarioController;
+
 
 // ─────────────────────────────────────────────
 // RUTAS PÚBLICAS
@@ -43,10 +45,15 @@ Auth::routes();
 // ─────────────────────────────────────────────
 // RUTAS USUARIO AUTENTICADO
 // ─────────────────────────────────────────────
+
+Route::get('/home', [HomeController::class, 'index'])->name('home');
+
 Route::middleware(['auth'])->group(function () {
 
     // Dashboard usuario
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
+    Route::get('/dashboard', [UsuarioController::class, 'dashboard'])
+    ->middleware('auth')
+    ->name('usuario.dashboard');
 
     // Carrito
     Route::prefix('carrito')->name('carrito.')->group(function () {

@@ -21,24 +21,7 @@ class HomeController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        // Estadísticas del usuario
-        $creditoDisponible = $user->saldoCreditosTotal();
-        $ordenesTotales = $user->ordenes()->count();
-        $ordenesRecientes = $user->ordenes()
-            ->with(['detalles.producto.imagenPrincipal', 'pago'])
-            ->latest()
-            ->take(5)
-            ->get();
-        
-        $favoritosCount = $user->favoritos()->count();
-        $devolucionesPendientes = $user->devoluciones()->where('estado', 'pendiente')->count();
-
-        return view('home', compact(
-            'creditoDisponible',
-            'ordenesTotales',
-            'ordenesRecientes',
-            'favoritosCount',
-            'devolucionesPendientes'
-        ));
+        // Redirigir al dashboard de usuario (el que tenías antes)
+        return redirect()->route('usuario.dashboard');
     }
 }

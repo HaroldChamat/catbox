@@ -122,4 +122,9 @@ class User extends Authenticatable
     {
         return $this->creditos()->where('usado', false)->sum('saldo');
     }
+
+    public function favoritos()
+    {
+        return $this->hasMany(Favorito::class);
+    }
 }

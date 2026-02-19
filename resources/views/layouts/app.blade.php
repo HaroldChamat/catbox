@@ -157,6 +157,13 @@
                 </form>
                 <ul class="navbar-nav ms-auto align-items-lg-center gap-2">
                     <li class="nav-item"><a class="nav-link" href="{{ route('productos.index') }}"><i class="bi bi-grid"></i> Catálogo</a></li>
+                  
+                    {{-- Dashboard Usuario --}}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('usuario.dashboard') }}">
+                            <i class="bi bi-house-door"></i> Mi Dashboard
+                        </a>
+                    </li>
 
                     {{-- Notificaciones --}}
                     <li class="nav-item dropdown">
@@ -265,6 +272,7 @@
                             <li><span class="dropdown-item-text text-muted small">{{ auth()->user()->email }}</span></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ route('perfil.index') }}"><i class="bi bi-person"></i> Mi cuenta</a></li>
+                            <li><a class="dropdown-item" href="{{ route('usuario.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
                             <li><a class="dropdown-item" href="{{ route('ordenes.index') }}"><i class="bi bi-bag"></i> Mis órdenes</a></li>
                             <li><a class="dropdown-item" href="{{ route('favoritos.index') }}"><i class="bi bi-heart-fill text-danger"></i> Mis favoritos</a></li>
                             <li><hr class="dropdown-divider"></li>
