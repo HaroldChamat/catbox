@@ -402,11 +402,24 @@ class OrdenController extends Controller
             }
 
             // Crear pago
+        $estadoOrden = 'pendiente';
+        $estadoPago = 'pendiente';
+        
+        // Si el total es 0 (pagado completamente con crédito), marcar como completado
+        if ($totalFinal == 0) {
+            $estadoOrden = 'procesando';
+            $estadoPago = 'completado';
+        }
+
+        // Actualizar estado de la orden
+        $orden->update(['estado' => $estadoOrden]);
+        
+            //Crear Pago
             Pago::create([
                 'orden_id'       => $orden->id,
                 'metodo_pago'    => $request->metodo_pago,
                 'monto'          => $totalFinal,
-                'estado'         => 'pendiente',
+                'estado'         => $estadoPago,
                 'transaction_id' => 'TXN-' . strtoupper(uniqid()),
                 'datos_pago'     => [
                     'ip'             => $request->ip(),
@@ -424,15 +437,20 @@ class OrdenController extends Controller
 
             DB::commit();
 
-            return redirect()->route('ordenes.show', $orden->id)
-                ->with('success', '¡Orden creada exitosamente! Por favor completa la información de pago.');
+                if ($totalFinal == 0) {
+                    return redirect()->route('ordenes.show', $orden->id)
+                        ->with('success', '¡Orden confirmada y pagada con crédito! Tu pedido está siendo procesado.');
+                } else {
+                    return redirect()->route('ordenes.show', $orden->id)
+                        ->with('success', '¡Orden creada exitosamente! Por favor completa la información de pago.');
+                }
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Error al procesar orden: ' . $e->getMessage());
-            return back()->with('error', 'Error al procesar la orden. Por favor, intenta de nuevo.');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                \Log::error('Error al procesar orden: ' . $e->getMessage());
+                return back()->with('error', 'Error: ' . $e->getMessage()); // temporal para ver el error real
+            }
         }
-    }
     /**
      * Mostrar confirmación de orden
      */

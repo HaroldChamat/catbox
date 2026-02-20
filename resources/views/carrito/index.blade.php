@@ -107,66 +107,88 @@
                     <hr>
                     
                     {{-- Cupón de descuento --}}
-                    @if(session('cupon'))
                     @php
-                        $cuponSesion = session('cupon');
                         $descuento = 0;
-                        $cuponObj = \App\Models\Cupon::with('productos')->find($cuponSesion['id']);
-                        if ($cuponObj) {
-                            foreach ($items as $item) {
-                                if ($cuponObj->aplicaA($item->producto)) {
-                                    $descuento += $cuponObj->calcularDescuento($item->subtotal);
+                        $totalConDescuento = $total;
+
+                        if(session('cupon')) {
+                            $cuponSesion = session('cupon');
+                            $cuponObj = \App\Models\Cupon::with('productos')->find($cuponSesion['id']);
+                            if ($cuponObj) {
+                                foreach ($items as $item) {
+                                    if ($cuponObj->aplicaA($item->producto)) {
+                                        $descuento += $cuponObj->calcularDescuento($item->subtotal);
+                                    }
                                 }
                             }
+                            $totalConDescuento = max(0, $total - $descuento);
                         }
-                        $totalConDescuento = max(0, $total - $descuento);
+
+                        // Crédito
+                        $creditoAplicado = 0;
+                        $totalFinal = $totalConDescuento;
+                        if(session('usar_credito') && $saldoCreditosTotal > 0) {
+                            $creditoAplicado = min($saldoCreditosTotal, $totalFinal);
+                            $totalFinal = max(0, $totalFinal - $creditoAplicado);
+                        }
                     @endphp
 
                     {{-- Créditos disponibles --}}
                     @if($saldoCreditosTotal > 0)
-                    <div class="alert alert-success py-2 px-3 mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="bi bi-wallet2"></i>
-                                <strong>Crédito disponible:</strong> 
-                                ${{ number_format($saldoCreditosTotal, 0, ',', '.') }}
+                    <div class="card border-success mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <i class="bi bi-wallet2 text-success me-2"></i>
+                                        Crédito disponible
+                                    </h6>
+                                    <p class="text-muted small mb-0">
+                                        Tienes ${{ number_format($saldoCreditosTotal, 0, ',', '.') }} de crédito
+                                    </p>
+                                </div>
+                                @if(session('usar_credito'))
+                                <span class="badge bg-success">✓ Aplicado</span>
+                                @endif
                             </div>
+
                             @if(session('usar_credito'))
-                            <form action="{{ route('credito.quitar') }}" method="POST" class="m-0">
+                            <div class="alert alert-success mb-2">
+                                <strong>Crédito aplicado:</strong> -${{ number_format($creditoAplicado, 0, ',', '.') }}
+                                @if($totalFinal == 0)
+                                <br><small>¡Tu crédito cubre el total! No necesitarás pagar.</small>
+                                @else
+                                <br><small>Solo pagarás: ${{ number_format($totalFinal, 0, ',', '.') }}</small>
+                                @endif
+                            </div>
+                            <form action="{{ route('credito.quitar') }}" method="POST">
                                 @csrf
-                                <button class="btn btn-sm btn-link text-danger p-0" title="No usar crédito">
-                                    <i class="bi bi-x-lg"></i>
+                                <button class="btn btn-sm btn-outline-danger w-100">
+                                    <i class="bi bi-x-circle"></i> No usar crédito
                                 </button>
                             </form>
                             @else
-                            <form action="{{ route('credito.aplicar') }}" method="POST" class="m-0">
+                            <form action="{{ route('credito.aplicar') }}" method="POST">
                                 @csrf
-                                <button class="btn btn-sm btn-success">Usar crédito</button>
+                                <button class="btn btn-success w-100">
+                                    <i class="bi bi-check-circle"></i> Usar mi crédito
+                                </button>
                             </form>
                             @endif
                         </div>
                     </div>
-
-                    @if(session('usar_credito'))
-                    @php
-                        $creditoAplicado = min($saldoCreditosTotal, session('cupon') ? $totalConDescuento : $total);
-                        $totalFinalConCredito = max(0, (session('cupon') ? $totalConDescuento : $total) - $creditoAplicado);
-                    @endphp
-                    <div class="d-flex justify-content-between mb-2 text-success">
-                        <span>Crédito aplicado</span>
-                        <strong>- ${{ number_format($creditoAplicado, 0, ',', '.') }}</strong>
-                    </div>
-                    @endif
                     @endif
 
                     <hr>
 
+                    {{-- Cupón aplicado --}}
+                    @if(session('cupon'))
                     <div class="alert alert-success py-2 px-3 d-flex justify-content-between align-items-center">
                         <div>
                             <i class="bi bi-ticket-perforated-fill"></i>
-                            <strong>{{ $cuponSesion['codigo'] }}</strong>
+                            <strong>{{ session('cupon.codigo') }}</strong>
                             <small class="ms-1 text-muted">
-                                ({{ $cuponSesion['tipo'] === 'porcentaje' ? $cuponSesion['valor'].'%' : '$'.number_format($cuponSesion['valor'],0,',','.') }} desc.)
+                                ({{ session('cupon.tipo') === 'porcentaje' ? session('cupon.valor').'%' : '$'.number_format(session('cupon.valor'),0,',','.') }} desc.)
                             </small>
                         </div>
                         <form action="{{ route('cupon.quitar') }}" method="POST" class="m-0">
@@ -186,8 +208,8 @@
                         <label class="form-label small fw-bold">¿Tienes un cupón?</label>
                         <div class="input-group input-group-sm">
                             <input type="text" name="codigo" class="form-control text-uppercase"
-                                   placeholder="Ej: CAT-ABC123"
-                                   value="{{ old('codigo') }}">
+                                placeholder="Ej: CAT-ABC123"
+                                value="{{ old('codigo') }}">
                             <button class="btn btn-outline-secondary" type="submit">
                                 <i class="bi bi-check-lg"></i> Aplicar
                             </button>
@@ -198,7 +220,16 @@
                     </form>
                     @endif
 
+                    @if(session('usar_credito'))
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span>Crédito aplicado</span>
+                        <strong>- ${{ number_format($creditoAplicado, 0, ',', '.') }}</strong>
+                    </div>
+                    @endif
+
                     <hr>
+
+
 
                     <div class="d-flex justify-content-between mb-3">
                         <h5>Total</h5>
@@ -254,15 +285,15 @@
         </div>
     </div>
     @else
-    {{-- Carrito vacío --}}
-    <div class="text-center py-5">
-        <i class="bi bi-cart-x display-1 text-muted"></i>
-        <h3 class="mt-3">Tu carrito está vacío</h3>
-        <p class="text-muted">¡Agrega productos para comenzar a comprar!</p>
-        <a href="{{ route('productos.index') }}" class="btn btn-catbox mt-3">
-            <i class="bi bi-shop"></i> Ir a la tienda
-        </a>
-    </div>
+        {{-- Carrito vacío --}}
+        <div class="text-center py-5">
+            <i class="bi bi-cart-x display-1 text-muted"></i>
+            <h3 class="mt-3">Tu carrito está vacío</h3>
+            <p class="text-muted">¡Agrega productos para comenzar a comprar!</p>
+            <a href="{{ route('productos.index') }}" class="btn btn-catbox mt-3">
+                <i class="bi bi-shop"></i> Ir a la tienda
+            </a>
+        </div>
     @endif
 </div>
 @endsection

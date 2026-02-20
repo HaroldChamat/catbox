@@ -13,79 +13,89 @@
             <form action="{{ route('ordenes.procesar') }}" method="POST">
                 @csrf
 
-                {{-- Método de pago --}}
-                @if($totalFinal > 0)
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title mb-3">
-                            <i class="bi bi-wallet2"></i> Método de Pago
-                        </h5>
-                        
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" name="metodo_pago" id="tarjeta" value="tarjeta" checked>
-                            <label class="form-check-label" for="tarjeta">
-                                <i class="bi bi-credit-card"></i> Tarjeta de Crédito/Débito
-                            </label>
-                        </div>
+                   {{-- Método de pago --}}
+                    @if($totalFinal > 0)
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">
+                                <i class="bi bi-wallet2"></i> Método de Pago
+                            </h5>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="metodo_pago" id="tarjeta" value="tarjeta" checked>
+                                <label class="form-check-label" for="tarjeta">
+                                    <i class="bi bi-credit-card"></i> Tarjeta de Crédito/Débito
+                                </label>
+                            </div>
 
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="metodo_pago" id="paypal" value="paypal">
-                            <label class="form-check-label" for="paypal">
-                                <i class="bi bi-paypal text-primary"></i> PayPal
-                            </label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="metodo_pago" id="paypal" value="paypal">
+                                <label class="form-check-label" for="paypal">
+                                    <i class="bi bi-paypal text-primary"></i> PayPal
+                                </label>
+                            </div>
                         </div>
                     </div>
-                </div>
-                @else
-                {{-- Si el crédito cubre todo, no requiere método de pago --}}
-                <input type="hidden" name="metodo_pago" value="credito">
-                <div class="alert alert-success">
-                    <i class="bi bi-check-circle-fill me-2"></i>
-                    <strong>Pago cubierto con crédito</strong>
-                    <p class="mb-0 mt-1 small">No necesitas ingresar datos de pago. Confirma tu orden directamente.</p>
-                </div>
-                @endif
+                    @else
+                    <input type="hidden" name="metodo_pago" value="credito">
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <strong>Pago cubierto con crédito</strong>
+                        <p class="mb-0 mt-1 small">No necesitas ingresar datos de pago. Confirma tu orden directamente.</p>
+                    </div>
+                    @endif
 
-                {{-- Usar crédito --}}
-                @if($saldoCreditosTotal > 0)
-                <div class="card shadow-sm mb-4 border-success">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">
-                                    <i class="bi bi-wallet2 text-success me-2"></i>
-                                    Usar mi crédito disponible
-                                </h6>
-                                <p class="text-muted small mb-0">
-                                    Tienes ${{ number_format($saldoCreditosTotal, 0, ',', '.') }} de crédito
-                                    @if($creditoAplicado > 0)
-                                        <span class="badge bg-success ms-2">✓ Aplicado</span>
-                                    @endif
+                    {{-- Usar crédito --}}
+                    @if($saldoCreditosTotal > 0 && session('usar_credito'))
+                    <div class="card shadow-sm mb-4 border-success">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0">
+                                <i class="bi bi-wallet2 me-2"></i>
+                                Crédito Aplicado
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <strong>Crédito disponible:</strong> ${{ number_format($saldoCreditosTotal, 0, ',', '.') }}
+                                </div>
+                                <div>
+                                    <strong class="text-success">Aplicado: -${{ number_format($creditoAplicado, 0, ',', '.') }}</strong>
+                                </div>
+                            </div>
+
+                            @if($totalFinal == 0)
+                            <div class="alert alert-success mb-0">
+                                <i class="bi bi-check-circle-fill me-2"></i>
+                                <strong>¡Tu crédito cubre el total!</strong>
+                                <p class="mb-0 mt-1 small">
+                                    No necesitas ingresar datos de pago. Al confirmar, tu pedido se procesará automáticamente.
                                 </p>
                             </div>
-                            <div>
-                                @if(session('usar_credito'))
-                                <span class="text-success fw-bold">
-                                    -${{ number_format($creditoAplicado, 0, ',', '.') }}
-                                </span>
-                                @endif
+                            @else
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Pago parcial con crédito</strong>
+                                <p class="mb-0 mt-1">
+                                    Tu crédito cubre ${{ number_format($creditoAplicado, 0, ',', '.') }}<br>
+                                    Solo pagarás la diferencia: <strong>${{ number_format($totalFinal, 0, ',', '.') }}</strong>
+                                </p>
                             </div>
+                            @endif
                         </div>
-
-                        @if($totalFinal == 0)
-                        <div class="alert alert-success mt-3 mb-0">
-                            <i class="bi bi-check-circle me-2"></i>
-                            <strong>¡Tu crédito cubre el total!</strong> No necesitas pagar con tarjeta o PayPal.
-                        </div>
-                        @elseif($creditoAplicado > 0)
-                        <div class="alert alert-info mt-3 mb-0">
-                            <i class="bi bi-info-circle me-2"></i>
-                            Solo pagarás la diferencia: <strong>${{ number_format($totalFinal, 0, ',', '.') }}</strong>
-                        </div>
-                        @endif
                     </div>
-                </div>
-                @endif
+                    @elseif($saldoCreditosTotal > 0 && !session('usar_credito'))
+                    <div class="alert alert-warning mb-4">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Tienes ${{ number_format($saldoCreditosTotal, 0, ',', '.') }} de crédito disponible</strong>
+                        <p class="mb-2 mt-1 small">Puedes usarlo para pagar total o parcialmente.</p>
+                        <a href="{{ route('carrito.index') }}" class="btn btn-sm btn-success">
+                            <i class="bi bi-arrow-left"></i> Volver al carrito para aplicar crédito
+                        </a>
+                    </div>
+                    @endif
+
+
 
 
                 {{-- Dirección de envío --}}
@@ -123,9 +133,18 @@
 
                 {{-- Botón de confirmar --}}
                 <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-catbox btn-lg">
-                        <i class="bi bi-check-circle"></i> Confirmar y Pagar
-                    </button>
+                    @if($totalFinal == 0)
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle"></i> Confirmar pedido (Pago con crédito)
+                        </button>
+                        <small class="text-center text-muted">
+                            Tu crédito cubre el total. La orden se procesará automáticamente.
+                        </small>
+                    @else
+                        <button type="submit" class="btn btn-catbox btn-lg">
+                            <i class="bi bi-check-circle"></i> Confirmar y continuar al pago
+                        </button>
+                    @endif
                     <a href="{{ route('carrito.index') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left"></i> Volver al carrito
                     </a>
@@ -193,7 +212,11 @@
                                     ${{ number_format($total, 0, ',', '.') }}
                                 </span>
                             @endif
-                            ${{ number_format($totalFinal, 0, ',', '.') }}
+                            @if($totalFinal == 0)
+                                <span class="text-success">$0 (Pagado con crédito)</span>
+                            @else
+                                ${{ number_format($totalFinal, 0, ',', '.') }}
+                            @endif
                         </h5>
                     </div>
 

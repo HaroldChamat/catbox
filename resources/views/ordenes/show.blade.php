@@ -294,58 +294,114 @@
                 </div>
             </div>
 
-            {{-- Información de pago --}}
-            <div class="card info-card shadow-sm mb-4">
-                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
-                    <h6 class="fw-700 mb-0"><i class="bi bi-credit-card text-danger me-2"></i>Información de pago</h6>
-                    @if($orden->estado === 'pendiente' && (!$orden->pago || $orden->pago->estado !== 'completado'))
-                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#pagoModal">
-                        <i class="bi bi-pencil"></i>
-                    </button>
-                    @endif
-                </div>
-                <div class="card-body">
-                    @if($orden->pago && $orden->pago->estado === 'completado')
-                    <div class="p-3 bg-light rounded">
-                        <p class="mb-2">
-                            <i class="bi bi-{{ $orden->pago->metodo_pago === 'tarjeta' ? 'credit-card' : 'paypal' }} text-success me-2"></i>
-                            <strong>{{ ucfirst($orden->pago->metodo_pago) }}</strong>
-                        </p>
-                        @if($orden->pago->datos_pago && isset($orden->pago->datos_pago['ultimos_digitos']))
-                        <p class="mb-2">
-                            <i class="bi bi-shield-check text-success me-2"></i>
-                            **** **** **** {{ $orden->pago->datos_pago['ultimos_digitos'] }}
-                        </p>
-                        @endif
-                        @if($orden->pago->datos_pago && isset($orden->pago->datos_pago['paypal_email']))
-                        <p class="mb-2">
-                            <i class="bi bi-envelope text-success me-2"></i>
-                            {{ $orden->pago->datos_pago['paypal_email'] }}
-                        </p>
-                        @endif
-                        <p class="mb-2">
-                            <i class="bi bi-cash text-success me-2"></i>
-                            Monto: <strong class="text-success">${{ number_format($orden->pago->monto, 0, ',', '.') }}</strong>
-                        </p>
-                        <p class="mb-0">
-                            <span class="badge bg-success">
-                                <i class="bi bi-check-circle"></i> {{ ucfirst($orden->pago->estado) }}
-                            </span>
-                        </p>
+                {{-- Información de Pago --}}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h6 class="fw-700 mb-0"><i class="bi bi-credit-card me-2"></i>Información de Pago</h6>
                     </div>
-                    @else
-                    <div class="alert alert-warning mb-0">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        <strong>Pago pendiente</strong>
-                        @if($orden->estado === 'pendiente')
-                        <button class="btn btn-sm btn-warning mt-2 w-100" data-bs-toggle="modal" data-bs-target="#pagoModal">
-                            <i class="bi bi-credit-card me-1"></i>Completar pago
-                        </button>
+                    <div class="card-body">
+                        @if($orden->pago)
+                            @php
+                                $datosPago = $orden->pago->datos_pago ?? [];
+                                $creditoAplicado = $datosPago['credito_aplicado'] ?? 0;
+                            @endphp
+
+                            @if($orden->pago->estado === 'completado')
+                                <div class="alert alert-success">
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                    <strong>Pago completado</strong>
+                                    @if($orden->pago->metodo_pago === 'credito' || $creditoAplicado >= ($datosPago['total_original'] ?? $orden->total))
+                                        <p class="mb-0 mt-1 small">Pagado completamente con crédito disponible</p>
+                                    @else
+                                        <p class="mb-0 mt-1 small">Método: {{ ucfirst($orden->pago->metodo_pago) }}</p>
+                                    @endif
+                                </div>
+                                <div class="mb-2">
+                                    <small class="text-muted">ID de Transacción:</small><br>
+                                    <code>{{ $orden->pago->transaction_id }}</code>
+                                </div>
+                            @elseif($orden->estado === 'pendiente')
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    <strong>Completa tu pago</strong>
+                                    <p class="mb-0 mt-1 small">Por favor ingresa los datos de pago para procesar tu orden.</p>
+                                </div>
+
+                                {{-- Formulario de pago --}}
+                                <form action="{{ route('ordenes.completar-pago', $orden->id) }}" method="POST">
+                                    @csrf
+                                    @method('PUT')
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-600">Método de Pago</label>
+                                        <select name="metodo_pago" class="form-select" id="metodo-pago-select" required>
+                                            <option value="">Selecciona un método</option>
+                                            <option value="tarjeta">Tarjeta de Crédito/Débito</option>
+                                            <option value="paypal">PayPal</option>
+                                        </select>
+                                    </div>
+
+                                    {{-- Campos de tarjeta --}}
+                                    <div id="campos-tarjeta" style="display:none;">
+                                        <div class="mb-3">
+                                            <label class="form-label">Número de Tarjeta</label>
+                                            <input type="text" name="numero_tarjeta" class="form-control" 
+                                                   placeholder="1234 5678 9012 3456" maxlength="19">
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Nombre del Titular</label>
+                                                <input type="text" name="nombre_titular" class="form-control" 
+                                                       placeholder="Como aparece en la tarjeta">
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">Vencimiento</label>
+                                                <input type="text" name="fecha_expiracion" class="form-control" 
+                                                       placeholder="MM/AA" maxlength="5">
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">CVV</label>
+                                                <input type="text" name="cvv" class="form-control" 
+                                                       placeholder="123" maxlength="4">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Campos de PayPal --}}
+                                    <div id="campos-paypal" style="display:none;">
+                                        <div class="mb-3">
+                                            <label class="form-label">Email de PayPal</label>
+                                            <input type="email" name="paypal_email" class="form-control" 
+                                                   placeholder="tu@email.com">
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-catbox w-100">
+                                        <i class="bi bi-credit-card"></i> Completar Pago
+                                    </button>
+                                </form>
+
+                                @push('scripts')
+                                <script>
+                                document.getElementById('metodo-pago-select').addEventListener('change', function() {
+                                    const tarjeta = document.getElementById('campos-tarjeta');
+                                    const paypal = document.getElementById('campos-paypal');
+                                    
+                                    tarjeta.style.display = 'none';
+                                    paypal.style.display = 'none';
+                                    
+                                    if (this.value === 'tarjeta') {
+                                        tarjeta.style.display = 'block';
+                                    } else if (this.value === 'paypal') {
+                                        paypal.style.display = 'block';
+                                    }
+                                });
+                                </script>
+                                @endpush
+                            @endif
                         @endif
                     </div>
-                    @endif
                 </div>
-            </div>
 
             {{-- Notas --}}
             <div class="card info-card shadow-sm mb-4">
